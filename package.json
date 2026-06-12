@@ -1,21 +1,45 @@
 {
   "name": "dennoh",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.0.0",
+  "description": "Local-first AI-native knowledge management. Save everything to one place; AI organizes it.",
+  "type": "module",
+  "bin": {
+    "dennoh": "./dist/cli.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/cli/main.ts --target=bun --outdir=dist --outfile=cli.js",
+    "test": "bun test",
+    "lint": "biome check src tests",
+    "format": "biome format --write src tests",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/goofmint/dennoh.git"
   },
-  "keywords": [],
+  "keywords": [
+    "knowledge-management",
+    "mcp",
+    "local-first",
+    "markdown",
+    "ai"
+  ],
   "author": "",
   "license": "MIT",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/goofmint/dennoh/issues"
   },
-  "homepage": "https://github.com/goofmint/dennoh#readme"
+  "homepage": "https://github.com/goofmint/dennoh#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.1.14",
+    "typescript": "^5.7.2"
+  },
+  "trustedDependencies": [
+    "@biomejs/biome"
+  ]
 }

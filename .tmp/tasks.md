@@ -13,17 +13,17 @@
 
 ## T0. プロジェクト基盤
 
-- [ ] T0.1 Bun プロジェクト初期化（`bun init`、`package.json` 整備、`bin: dennoh` 宣言）
+- [x] T0.1 Bun プロジェクト初期化（`bun init`、`package.json` 整備、`bin: dennoh` 宣言）
   - 検証: `bun --version` で対応版確認、`bun run` でエントリ起動できる
-- [ ] T0.2 TypeScript 設定（`tsconfig.json`、strict、`any`/`unknown` 禁止に合うルール）
+- [x] T0.2 TypeScript 設定（`tsconfig.json`、strict、`any`/`unknown` 禁止に合うルール）
   - 検証: `tsc --noEmit` がエラーなしで通る
-- [ ] T0.3 ディレクトリ構成確定（`src/core`, `src/cli`, `src/mcp`, `src/db`, `src/git`, `src/i18n`, `src/watch`, `tests/`）
+- [x] T0.3 ディレクトリ構成確定（`src/core`, `src/cli`, `src/mcp`, `src/db`, `src/git`, `src/i18n`, `src/watch`, `tests/`）
   - 検証: 空モジュールが import 可能
-- [ ] T0.4 Lint/Format（Biome または ESLint+Prettier）
+- [x] T0.4 Lint/Format（Biome 採用）
   - 検証: `bun run lint` / `bun run format` がエラーなしで通る
-- [ ] T0.5 テストランナー設定（`bun test`）
+- [x] T0.5 テストランナー設定（`bun test`）
   - 検証: ダミー 1 ケースが green
-- [ ] T0.6 ロガー（stdout を MCP 専用、ログは stderr に固定する薄いラッパ）
+- [x] T0.6 ロガー（stdout を MCP 専用、ログは stderr に固定する薄いラッパ）
   - 検証: ユニットテストで stdout/stderr 出力先を確認
 
 ---
