@@ -7,6 +7,7 @@ import "@/db";
 import "@/git";
 import "@/i18n";
 import "@/watch";
+import "@/log";
 
 describe("smoke", () => {
   it("runs the test runner", () => {

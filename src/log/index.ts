@@ -32,10 +32,10 @@ function write(level: LogLevel, msg: string, ctx?: LogContext): void {
   if (LEVEL_RANK[level] < LEVEL_RANK[threshold]) return;
 
   const record: LogRecord = {
+    ...(ctx ?? {}),
     level,
     ts: new Date().toISOString(),
     msg,
-    ...(ctx ?? {}),
   };
 
   process.stderr.write(`${JSON.stringify(record)}\n`);

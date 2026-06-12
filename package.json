@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build src/cli/main.ts --target=bun --outdir=dist --outfile=cli.js",
+    "build": "bun build src/cli/main.ts --target=bun --outfile=dist/cli.js",
     "test": "bun test",
     "lint": "biome check src tests",
     "format": "biome format --write src tests",

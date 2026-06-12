@@ -57,6 +57,15 @@ describe("log", () => {
     expect(typeof parsed.ts).toBe("string");
   });
 
+  it("does not let ctx override level / ts / msg", () => {
+    log.info("real-msg", { level: "debug", ts: "forged", msg: "forged" });
+    const firstCall = stderrSpy.mock.calls[0];
+    const parsed = JSON.parse(String(firstCall?.[0])) as Record<string, unknown>;
+    expect(parsed.level).toBe("info");
+    expect(parsed.msg).toBe("real-msg");
+    expect(parsed.ts).not.toBe("forged");
+  });
+
   it("filters below threshold (default info suppresses debug)", () => {
     log.debug("should be suppressed");
     expect(stderrSpy).not.toHaveBeenCalled();
