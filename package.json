@@ -1,0 +1,21 @@
+{
+  "name": "dennoh",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goofmint/dennoh.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/goofmint/dennoh/issues"
+  },
+  "homepage": "https://github.com/goofmint/dennoh#readme"
+}
