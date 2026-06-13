@@ -58,9 +58,7 @@ describe("file", () => {
     it("supports parallel writes to distinct paths without temp-name collisions", async () => {
       const targets = Array.from({ length: 20 }, (_, i) => path.join(tempDir, `n${i}.txt`));
       await Promise.all(targets.map((p, i) => writeFileAtomic(p, `body-${i}`)));
-      for (let i = 0; i < targets.length; i++) {
-        const file = targets[i];
-        if (file === undefined) throw new Error("unexpected undefined");
+      for (const [i, file] of targets.entries()) {
         expect(fs.readFileSync(file, "utf-8")).toBe(`body-${i}`);
       }
     });
@@ -98,15 +96,34 @@ describe("file", () => {
       await expect(readNote(txt)).rejects.toThrow(/Not a note path/);
     });
 
-    it("throws on a missing file", async () => {
-      const missing = path.join(tempDir, "absent.md");
+    it("throws when the basename is not a valid UUID v7", async () => {
+      const target = path.join(tempDir, "not-a-uuid.md");
+      fs.writeFileSync(target, "irrelevant");
+      await expect(readNote(target)).rejects.toThrow(/UUID v7/);
+    });
+
+    it("throws on a missing file (with a UUID-v7 name)", async () => {
+      const missing = path.join(tempDir, `${generateId()}.md`);
       await expect(readNote(missing)).rejects.toThrow(/Failed to read note/);
     });
 
-    it("propagates parseFrontmatter errors for malformed content", async () => {
-      const target = path.join(tempDir, "broken.md");
+    it("propagates parseFrontmatter errors for malformed content (UUID-v7 name)", async () => {
+      const target = path.join(tempDir, `${generateId()}.md`);
       fs.writeFileSync(target, "no frontmatter here\n");
       await expect(readNote(target)).rejects.toThrow();
+    });
+  });
+
+  describe("writeNote id validation", () => {
+    it("throws when id is not a valid UUID v7", async () => {
+      await expect(writeNote(tempDir, "not-a-uuid", new Date(), SAMPLE_FM, "x")).rejects.toThrow(
+        /UUID v7/
+      );
+    });
+
+    it("throws when id is a UUID v4 (wrong version nibble)", async () => {
+      const v4 = "018f0c8e-7c4f-4d3a-8b2e-1234567890ab";
+      await expect(writeNote(tempDir, v4, new Date(), SAMPLE_FM, "x")).rejects.toThrow(/UUID v7/);
     });
   });
 });

@@ -4,6 +4,19 @@ import type { NoteFrontmatter, NoteSource } from "./types";
 
 const DELIMITER = "---";
 
+const ISO_8601_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function assertIsoWithOffset(value: string, field: string): void {
+  if (!ISO_8601_WITH_OFFSET.test(value)) {
+    throw new Error(
+      `Frontmatter '${field}' must be an ISO 8601 string with offset (got ${JSON.stringify(value)}).`
+    );
+  }
+  if (Number.isNaN(Date.parse(value))) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -82,9 +95,11 @@ export function parseFrontmatter(content: string): {
   if (typeof parsed.createdAt !== "string") {
     throw new Error("Frontmatter must include a 'createdAt' string in ISO 8601 format.");
   }
+  assertIsoWithOffset(parsed.createdAt, "createdAt");
   if (typeof parsed.updatedAt !== "string") {
     throw new Error("Frontmatter must include an 'updatedAt' string in ISO 8601 format.");
   }
+  assertIsoWithOffset(parsed.updatedAt, "updatedAt");
   if (parsed.source !== undefined && parsed.source !== "note") {
     throw new Error(`Unsupported source: ${String(parsed.source)}`);
   }

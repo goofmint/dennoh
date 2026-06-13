@@ -137,6 +137,86 @@ body
       expect(() => parseFrontmatter("---\ncreatedAt: foo\n")).toThrow(/Closing/);
     });
 
+    it("accepts ISO 8601 with Z (UTC) offset", () => {
+      const content = `---
+createdAt: "2026-06-12T10:30:00Z"
+updatedAt: "2026-06-12T10:35:00Z"
+---
+
+body
+`;
+      const { frontmatter } = parseFrontmatter(content);
+      expect(frontmatter.createdAt).toBe("2026-06-12T10:30:00Z");
+      expect(frontmatter.updatedAt).toBe("2026-06-12T10:35:00Z");
+    });
+
+    it("accepts ISO 8601 with fractional seconds and offset", () => {
+      const content = `---
+createdAt: "2026-06-12T10:30:00.123+09:00"
+updatedAt: "2026-06-12T10:35:00.456-05:00"
+---
+
+body
+`;
+      const { frontmatter } = parseFrontmatter(content);
+      expect(frontmatter.createdAt).toBe("2026-06-12T10:30:00.123+09:00");
+    });
+
+    it("throws when createdAt is a non-ISO string", () => {
+      const content = `---
+createdAt: "yesterday"
+updatedAt: "2026-06-12T10:35:00+09:00"
+---
+
+body
+`;
+      expect(() => parseFrontmatter(content)).toThrow(/createdAt.*ISO 8601/);
+    });
+
+    it("throws when createdAt lacks an offset", () => {
+      const content = `---
+createdAt: "2026-06-12T10:30:00"
+updatedAt: "2026-06-12T10:35:00+09:00"
+---
+
+body
+`;
+      expect(() => parseFrontmatter(content)).toThrow(/createdAt.*offset/);
+    });
+
+    it("throws when createdAt is a date-only string", () => {
+      const content = `---
+createdAt: "2026-06-12"
+updatedAt: "2026-06-12T10:35:00+09:00"
+---
+
+body
+`;
+      expect(() => parseFrontmatter(content)).toThrow(/createdAt/);
+    });
+
+    it("throws when createdAt has impossible date components even if shape matches", () => {
+      const content = `---
+createdAt: "2026-13-99T10:30:00+09:00"
+updatedAt: "2026-06-12T10:35:00+09:00"
+---
+
+body
+`;
+      expect(() => parseFrontmatter(content)).toThrow(/createdAt.*timestamp/);
+    });
+
+    it("throws when updatedAt is not ISO with offset (even if createdAt is fine)", () => {
+      const content = `---
+createdAt: "2026-06-12T10:30:00+09:00"
+updatedAt: "today"
+---
+
+body
+`;
+      expect(() => parseFrontmatter(content)).toThrow(/updatedAt/);
+    });
+
     it("throws on unsupported source value", () => {
       const content = `---
 createdAt: "2026-06-12T10:30:00+09:00"
