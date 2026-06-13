@@ -30,15 +30,15 @@
 
 ## T1. 設定 / 初期化 (F-5)
 
-- [ ] T1.1 グローバル設定ファイル読み書き（`~/Library/Application Support/dennoh/config.json`）
+- [x] T1.1 グローバル設定ファイル読み書き（`~/Library/Application Support/dennoh/config.json`）
   - 検証: 書き込み→再起動で読み戻し、`vaultPath`/`lang` が一致
-- [ ] T1.2 設定スキーマ（`vaultPath: string`, `lang: 'ja' | 'en'`）と型定義
+- [x] T1.2 設定スキーマ（`vaultPath: string`, `lang: 'ja' | 'en'`）と型定義
   - 検証: 不正値読み込みで型エラー or 既定値フォールバック（後者は要件範囲外なら例外）
-- [ ] T1.3 `dennoh config get/set/list` 実装
+- [x] T1.3 `dennoh config get/set/list` 実装
   - 検証: `dennoh config set lang en && dennoh config get lang` が `en` を返す
-- [ ] T1.4 `dennoh init` 実装（保存フォルダ選択、`.dennoh/` 作成、`git init`、初期 config 書き込み）
+- [x] T1.4 `dennoh init` 実装（保存フォルダ選択、`.dennoh/` 作成、`git init`、初期 config 書き込み）
   - 検証: クリーン環境で `dennoh init` 実行後、保存フォルダ・`.dennoh/`・`.git/`・`config.json` が揃う
-- [ ] T1.5 `DENNOH_LANG` 環境変数による上書き
+- [x] T1.5 `DENNOH_LANG` 環境変数による上書き
   - 検証: `DENNOH_LANG=en dennoh config get lang` で `en` が返る（設定ファイル値より優先）
 
 ---
