@@ -15,7 +15,22 @@ export function buildNoteDir(vaultPath: string, date: Date): string {
   return path.join(vaultPath, yyyy, mm, dd);
 }
 
+function assertSafeNoteId(id: string): void {
+  if (id.length === 0) {
+    throw new Error("Note id must not be empty.");
+  }
+  if (/[/\\\0]/.test(id)) {
+    throw new Error(
+      `Note id must not contain path separators or null bytes: ${JSON.stringify(id)}`
+    );
+  }
+  if (id === "." || id === "..") {
+    throw new Error(`Note id must not be a relative path segment: ${JSON.stringify(id)}`);
+  }
+}
+
 export function buildNotePath(vaultPath: string, id: string, date: Date): string {
+  assertSafeNoteId(id);
   return path.join(buildNoteDir(vaultPath, date), `${id}${MD_EXT}`);
 }
 

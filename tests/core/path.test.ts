@@ -58,6 +58,39 @@ describe("path", () => {
       const p = buildNotePath("/vault", upper, new Date(2026, 5, 13));
       expect(p.endsWith(`${upper}.md`)).toBe(true);
     });
+
+    it("rejects an id that contains '..'", () => {
+      expect(() => buildNotePath("/vault", "..", new Date(2026, 5, 13))).toThrow();
+    });
+
+    it("rejects an id containing a forward-slash path separator", () => {
+      expect(() => buildNotePath("/vault", "../escape", new Date(2026, 5, 13))).toThrow(
+        /path separator/
+      );
+      expect(() => buildNotePath("/vault", "foo/bar", new Date(2026, 5, 13))).toThrow(
+        /path separator/
+      );
+    });
+
+    it("rejects an id containing a backslash path separator", () => {
+      expect(() => buildNotePath("/vault", "foo\\bar", new Date(2026, 5, 13))).toThrow(
+        /path separator/
+      );
+    });
+
+    it("rejects an absolute-looking id", () => {
+      expect(() => buildNotePath("/vault", "/etc/passwd", new Date(2026, 5, 13))).toThrow(
+        /path separator/
+      );
+    });
+
+    it("rejects an id containing a null byte", () => {
+      expect(() => buildNotePath("/vault", "foo\0bar", new Date(2026, 5, 13))).toThrow();
+    });
+
+    it("rejects an empty id", () => {
+      expect(() => buildNotePath("/vault", "", new Date(2026, 5, 13))).toThrow(/empty/);
+    });
   });
 
   describe("isNotePath", () => {
