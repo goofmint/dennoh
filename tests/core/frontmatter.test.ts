@@ -160,6 +160,7 @@ body
 `;
       const { frontmatter } = parseFrontmatter(content);
       expect(frontmatter.createdAt).toBe("2026-06-12T10:30:00.123+09:00");
+      expect(frontmatter.updatedAt).toBe("2026-06-12T10:35:00.456-05:00");
     });
 
     it("throws when createdAt is a non-ISO string", () => {

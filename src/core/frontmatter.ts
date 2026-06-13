@@ -4,14 +4,68 @@ import type { NoteFrontmatter, NoteSource } from "./types";
 
 const DELIMITER = "---";
 
-const ISO_8601_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const ISO_8601_WITH_OFFSET = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function yearIsLeap(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+function maxDaysForMonth(year: number, month: number): number {
+  const daysInMonth = [31, yearIsLeap(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return daysInMonth[month - 1] ?? 31;
+}
 
 function assertIsoWithOffset(value: string, field: string): void {
-  if (!ISO_8601_WITH_OFFSET.test(value)) {
+  const match = ISO_8601_WITH_OFFSET.exec(value);
+  if (!match) {
     throw new Error(
       `Frontmatter '${field}' must be an ISO 8601 string with offset (got ${JSON.stringify(value)}).`
     );
   }
+
+  const year = parseInt(match[1] ?? "", 10);
+  const month = parseInt(match[2] ?? "", 10);
+  const day = parseInt(match[3] ?? "", 10);
+  const hour = parseInt(match[4] ?? "", 10);
+  const minute = parseInt(match[5] ?? "", 10);
+  const second = parseInt(match[6] ?? "", 10);
+  const fraction = match[7]; // optional fractional seconds
+
+  // Validate month
+  if (month < 1 || month > 12) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+
+  // Validate day
+  const maxDay = maxDaysForMonth(year, month);
+  if (day < 1 || day > maxDay) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+
+  // Validate hour
+  if (hour < 0 || hour > 23) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+
+  // Validate minute
+  if (minute < 0 || minute > 59) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+
+  // Validate second
+  if (second < 0 || second > 59) {
+    throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+  }
+
+  // Validate fractional seconds if present
+  if (fraction !== undefined) {
+    const fractionNum = parseInt(fraction, 10);
+    if (Number.isNaN(fractionNum) || fractionNum < 0) {
+      throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
+    }
+  }
+
+  // Final check with Date.parse
   if (Number.isNaN(Date.parse(value))) {
     throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
   }
