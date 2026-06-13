@@ -4,15 +4,23 @@ import type { NoteFrontmatter, NoteSource } from "./types";
 
 const DELIMITER = "---";
 
-const ISO_8601_WITH_OFFSET = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
+const ISO_8601_WITH_OFFSET =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function yearIsLeap(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
 function maxDaysForMonth(year: number, month: number): number {
+  if (month < 1 || month > 12) {
+    throw new Error(`maxDaysForMonth: invalid month ${month} (year=${year}).`);
+  }
   const daysInMonth = [31, yearIsLeap(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return daysInMonth[month - 1] ?? 31;
+  const days = daysInMonth[month - 1];
+  if (days === undefined) {
+    throw new Error(`maxDaysForMonth: missing entry for month=${month} (year=${year}).`);
+  }
+  return days;
 }
 
 function assertIsoWithOffset(value: string, field: string): void {
@@ -23,12 +31,12 @@ function assertIsoWithOffset(value: string, field: string): void {
     );
   }
 
-  const year = parseInt(match[1] ?? "", 10);
-  const month = parseInt(match[2] ?? "", 10);
-  const day = parseInt(match[3] ?? "", 10);
-  const hour = parseInt(match[4] ?? "", 10);
-  const minute = parseInt(match[5] ?? "", 10);
-  const second = parseInt(match[6] ?? "", 10);
+  const year = Number.parseInt(match[1] ?? "", 10);
+  const month = Number.parseInt(match[2] ?? "", 10);
+  const day = Number.parseInt(match[3] ?? "", 10);
+  const hour = Number.parseInt(match[4] ?? "", 10);
+  const minute = Number.parseInt(match[5] ?? "", 10);
+  const second = Number.parseInt(match[6] ?? "", 10);
   const fraction = match[7]; // optional fractional seconds
 
   // Validate month
@@ -59,7 +67,7 @@ function assertIsoWithOffset(value: string, field: string): void {
 
   // Validate fractional seconds if present
   if (fraction !== undefined) {
-    const fractionNum = parseInt(fraction, 10);
+    const fractionNum = Number.parseInt(fraction, 10);
     if (Number.isNaN(fractionNum) || fractionNum < 0) {
       throw new Error(`Frontmatter '${field}' is not a valid timestamp: ${JSON.stringify(value)}.`);
     }
