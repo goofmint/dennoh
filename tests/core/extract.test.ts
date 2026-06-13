@@ -124,4 +124,11 @@ describe("extractMentions", () => {
       expect(result.tags).toEqual(["tag", "other"]);
     });
   });
+
+  describe("additional edge cases", () => {
+    it("does not extract standalone # or @ followed by whitespace (min 2 chars required)", () => {
+      const result = extractMentions("just # and @ alone");
+      expect(result).toEqual({ projects: [], tags: [] });
+    });
+  });
 });
