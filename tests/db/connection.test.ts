@@ -30,9 +30,12 @@ describe("db/connection", () => {
   describe("openDatabase", () => {
     it("supports the basic connect → query → close cycle", () => {
       const db = openDatabase(vaultPath);
-      const row = db.query<{ answer: number }, []>("SELECT 1 AS answer").get();
-      expect(row?.answer).toBe(1);
-      closeDatabase(db);
+      try {
+        const row = db.query<{ answer: number }, []>("SELECT 1 AS answer").get();
+        expect(row?.answer).toBe(1);
+      } finally {
+        closeDatabase(db);
+      }
     });
 
     it("creates the .dennoh directory and index.db file automatically", () => {

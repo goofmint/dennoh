@@ -114,5 +114,45 @@ describe("db/sync", () => {
       const result = await scanAndSync(db, vaultPath);
       expect(result).toEqual({ added: 0, updated: 0, deleted: 0, errors: [] });
     });
+
+    it("accumulates errors for invalid updatedAt and continues processing valid files", async () => {
+      const validId = generateId();
+      const invalidId = generateId();
+      const date = new Date(2026, 5, 12);
+
+      await writeNote(vaultPath, validId, date, fm({ updatedAt: "2026-06-12T10:00:00+09:00" }), "valid body");
+      await writeNote(vaultPath, invalidId, date, fm({ updatedAt: "not-a-date" }), "invalid body");
+
+      bumpMtime(buildNotePath(vaultPath, validId, date));
+      bumpMtime(buildNotePath(vaultPath, invalidId, date));
+
+      const result = await scanAndSync(db, vaultPath);
+
+      expect(result.added).toBe(1);
+      expect(result.updated).toBe(0);
+      expect(result.deleted).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.path).toBe(buildNotePath(vaultPath, invalidId, date));
+
+      expect(getNoteById(db, validId)?.id).toBe(validId);
+      expect(getNoteById(db, invalidId)).toBeNull();
+    });
+
+    it("single file with invalid updatedAt yields one error and leaves DB unchanged", async () => {
+      const id = generateId();
+      const date = new Date(2026, 5, 15);
+      await writeNote(vaultPath, id, date, fm({ updatedAt: "not-a-date" }), "body");
+      bumpMtime(buildNotePath(vaultPath, id, date));
+
+      expect(notesCount(db)).toBe(0);
+
+      const result = await scanAndSync(db, vaultPath);
+
+      expect(result.added).toBe(0);
+      expect(result.updated).toBe(0);
+      expect(result.deleted).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(notesCount(db)).toBe(0);
+    });
   });
 });

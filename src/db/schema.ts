@@ -96,6 +96,12 @@ export function runMigrations(db: Database): void {
   const targetVersion = Math.max(...Object.keys(MIGRATIONS).map(Number));
   let currentVersion = getCurrentVersion(db);
 
+  if (currentVersion > targetVersion) {
+    throw new Error(
+      `DB schema version ${currentVersion} is newer than the binary's target version ${targetVersion}; cannot migrate`
+    );
+  }
+
   // Idempotency: every iteration only advances when the migration for the
   // next slot is registered. Re-running `runMigrations` on an up-to-date DB
   // immediately falls through the `while` because currentVersion already

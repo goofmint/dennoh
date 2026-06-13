@@ -49,12 +49,8 @@ describe("db/reindex", () => {
       // serialized the same way the CLI/MCP layer would write it.
       const ids = [generateId(), generateId(), generateId()];
       const dates = [new Date(2026, 5, 12), new Date(2026, 5, 13), new Date(2026, 5, 14)];
-      for (let i = 0; i < ids.length; i++) {
-        const idValue = ids[i];
-        const dateValue = dates[i];
-        if (idValue === undefined || dateValue === undefined) {
-          throw new Error("test setup invariant violated");
-        }
+      const pairs = ids.map((id, i) => [id, dates[i]!, i] as const);
+      for (const [idValue, dateValue, i] of pairs) {
         await writeNote(vaultPath, idValue, dateValue, fm({ title: `t${i}` }), `body ${i}`);
       }
 

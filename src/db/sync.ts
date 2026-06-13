@@ -17,20 +17,41 @@ export type SyncResult = {
 
 // Walker variant that also returns mtime so the diff loop can decide whether
 // a file needs re-reading without a second `stat` pass.
+// I/O errors for individual directories or files are caught and recorded in
+// `errors`; walking continues for remaining entries so one bad path does not
+// abort the full scan.
 async function* walkMdFilesWithStats(
-  root: string
+  root: string,
+  errors: SyncResult["errors"]
 ): AsyncIterable<{ path: string; mtimeMs: number }> {
-  const entries = await fs.promises.readdir(root, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.promises.readdir(root, { withFileTypes: true });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    errors.push({ path: root, message });
+    return;
+  }
   for (const entry of entries) {
     const full = path.join(root, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === DENNOH_DIR) {
         continue;
       }
-      yield* walkMdFilesWithStats(full);
+      try {
+        yield* walkMdFilesWithStats(full, errors);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        errors.push({ path: full, message });
+      }
     } else if (entry.isFile() && isNotePath(full)) {
-      const stats = await fs.promises.stat(full);
-      yield { path: full, mtimeMs: stats.mtimeMs };
+      try {
+        const stats = await fs.promises.stat(full);
+        yield { path: full, mtimeMs: stats.mtimeMs };
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        errors.push({ path: full, message });
+      }
     }
   }
 }
@@ -40,7 +61,7 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
   // DB; reading both then diffing minimizes the time window where external
   // writes during scan could be missed.
   const fsFiles = new Map<string, number>();
-  for await (const file of walkMdFilesWithStats(vaultPath)) {
+  for await (const file of walkMdFilesWithStats(vaultPath, errors)) {
     fsFiles.set(file.path, file.mtimeMs);
   }
 
