@@ -84,7 +84,7 @@ describe("extractMentions", () => {
       expect(result.projects).toEqual(["realTag"]);
     });
 
-    it("treats an inline `# ` (not at line start) as not a heading and still does not extract `#` followed by a space", () => {
+    it("does not extract `#` followed by a space — HASH_PATTERN requires [\\p{L}\\p{N}_-] after `#`, so the result is independent of HEADING_PATTERN", () => {
       const result = extractMentions("「これは # ではない」");
       expect(result.projects).toEqual([]);
     });
