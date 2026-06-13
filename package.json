@@ -41,5 +41,9 @@
   },
   "trustedDependencies": [
     "@biomejs/biome"
-  ]
+  ],
+  "dependencies": {
+    "uuidv7": "^1.2.1",
+    "yaml": "^2.9.0"
+  }
 }

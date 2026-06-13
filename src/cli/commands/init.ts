@@ -5,6 +5,7 @@ import * as readline from "node:readline/promises";
 
 import type { CliIO } from "@/cli/types";
 import { writeConfig } from "@/config";
+import { DENNOH_DIR } from "@/core";
 
 export type PromptVaultPathFn = (io: CliIO) => Promise<string>;
 
@@ -42,7 +43,7 @@ export function resolveVaultPath(rawInput: string): string {
 
 export function ensureVaultDirs(vaultPath: string): void {
   fs.mkdirSync(vaultPath, { recursive: true });
-  fs.mkdirSync(path.join(vaultPath, ".dennoh"), { recursive: true });
+  fs.mkdirSync(path.join(vaultPath, DENNOH_DIR), { recursive: true });
 }
 
 export function initGitRepo(vaultPath: string, io: CliIO): boolean {
@@ -67,10 +68,10 @@ export function initGitRepo(vaultPath: string, io: CliIO): boolean {
 
 export function updateGitignore(vaultPath: string): boolean {
   const giPath = path.join(vaultPath, ".gitignore");
-  const entry = ".dennoh/";
+  const entry = `${DENNOH_DIR}/`;
   const existing = fs.existsSync(giPath) ? fs.readFileSync(giPath, "utf-8") : "";
   const lines = existing.split("\n").map((line) => line.trim());
-  if (lines.includes(entry) || lines.includes(".dennoh") || lines.includes(".dennoh/*")) {
+  if (lines.includes(entry) || lines.includes(DENNOH_DIR) || lines.includes(`${DENNOH_DIR}/*`)) {
     return false;
   }
   const prefix = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
@@ -148,8 +149,8 @@ export async function initCommand(deps: InitDeps): Promise<number> {
     writeConfig({ vaultPath, lang: "ja" });
 
     io.stdout(`Initialized vault at ${vaultPath}\n`);
-    io.stdout(`  - created ${path.join(vaultPath, ".dennoh")}\n`);
-    io.stdout(`  - ${gitignoreChanged ? "added" : "kept"} .dennoh/ in .gitignore\n`);
+    io.stdout(`  - created ${path.join(vaultPath, DENNOH_DIR)}\n`);
+    io.stdout(`  - ${gitignoreChanged ? "added" : "kept"} ${DENNOH_DIR}/ in .gitignore\n`);
     io.stdout("  - wrote dennoh config\n");
 
     const cloud = detectCloudSync(vaultPath);

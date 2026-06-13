@@ -12,6 +12,7 @@ import {
   updateGitignore,
 } from "@/cli";
 import { readConfig } from "@/config";
+import { DENNOH_DIR } from "@/core";
 
 function makeIO(): { io: CliIO; stdout: () => string; stderr: () => string } {
   const stdoutBuf: string[] = [];
@@ -131,6 +132,27 @@ describe("cli init", () => {
       fs.writeFileSync(path.join(vault, ".gitignore"), ".dennoh\n");
       const changed = updateGitignore(vault);
       expect(changed).toBe(false);
+    });
+
+    it("creates a new .gitignore containing ${DENNOH_DIR}/ when none existed", async () => {
+      const vault = path.join(tempDir, "fresh-vault");
+      const { io } = makeIO();
+      await initCommand({ io, promptVaultPath: async () => vault });
+
+      const giPath = path.join(vault, ".gitignore");
+      expect(fs.existsSync(giPath)).toBe(true);
+      const gi = fs.readFileSync(giPath, "utf-8");
+      expect(gi).toContain(`${DENNOH_DIR}/`);
+    });
+
+    it("uses the DENNOH_DIR constant as the gitignore entry", async () => {
+      const vault = path.join(tempDir, "const-check-vault");
+      const { io } = makeIO();
+      await initCommand({ io, promptVaultPath: async () => vault });
+
+      const gi = fs.readFileSync(path.join(vault, ".gitignore"), "utf-8");
+      const lines = gi.split("\n").map((line) => line.trim());
+      expect(lines).toContain(`${DENNOH_DIR}/`);
     });
   });
 
