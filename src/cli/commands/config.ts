@@ -1,5 +1,5 @@
 import type { CliIO } from "@/cli/types";
-import { type Config, readConfig, resolveLang, writeConfig } from "@/config";
+import { type Config, readConfig, writeConfig } from "@/config";
 
 function readError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -15,16 +15,17 @@ export function configGet(args: string[], io: CliIO): number {
   if (key === "lang") {
     const envLang = process.env.DENNOH_LANG;
     if (envLang === "ja" || envLang === "en") {
-      io.stdout(`${resolveLang()}\n`);
+      io.stdout(`${envLang}\n`);
       return 0;
     }
+    let cfg: Config;
     try {
-      readConfig();
+      cfg = readConfig();
     } catch (e) {
       io.stderr(`${readError(e)}\n`);
       return 1;
     }
-    io.stdout(`${resolveLang()}\n`);
+    io.stdout(`${cfg.lang}\n`);
     return 0;
   }
 
