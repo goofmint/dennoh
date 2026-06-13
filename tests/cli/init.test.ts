@@ -144,8 +144,8 @@ describe("cli init", () => {
         "notes"
       );
       const { io, stderr } = makeIO();
-      const code = await initCommand({ io, promptVaultPath: async () => vault });
-      expect(code).toBe(0);
+      const result = await initCommand({ io, promptVaultPath: async () => vault });
+      expect(result).toBe(0);
       expect(stderr()).toContain("iCloud Drive");
       expect(stderr()).toContain(".git");
       expect(stderr()).toContain(".nosync");
@@ -154,7 +154,8 @@ describe("cli init", () => {
     it("warns when the vault is inside Dropbox", async () => {
       const vault = path.join(tempDir, "Dropbox", "vault");
       const { io, stderr } = makeIO();
-      await initCommand({ io, promptVaultPath: async () => vault });
+      const result = await initCommand({ io, promptVaultPath: async () => vault });
+      expect(result).toBe(0);
       expect(stderr()).toContain("Dropbox");
       expect(stderr()).toContain(".dropboxignore");
     });
@@ -162,21 +163,24 @@ describe("cli init", () => {
     it("warns when the vault is inside ~/OneDrive", async () => {
       const vault = path.join(tempDir, "OneDrive", "vault");
       const { io, stderr } = makeIO();
-      await initCommand({ io, promptVaultPath: async () => vault });
+      const result = await initCommand({ io, promptVaultPath: async () => vault });
+      expect(result).toBe(0);
       expect(stderr()).toContain("OneDrive");
     });
 
     it("warns when the vault is inside ~/Library/CloudStorage/OneDrive-Personal/", async () => {
       const vault = path.join(tempDir, "Library", "CloudStorage", "OneDrive-Personal", "vault");
       const { io, stderr } = makeIO();
-      await initCommand({ io, promptVaultPath: async () => vault });
+      const result = await initCommand({ io, promptVaultPath: async () => vault });
+      expect(result).toBe(0);
       expect(stderr()).toContain("OneDrive");
     });
 
     it("does not warn for a non-cloud path", async () => {
       const vault = path.join(tempDir, "plain", "vault");
       const { io, stderr } = makeIO();
-      await initCommand({ io, promptVaultPath: async () => vault });
+      const result = await initCommand({ io, promptVaultPath: async () => vault });
+      expect(result).toBe(0);
       const out = stderr().toLowerCase();
       expect(out).not.toContain("dropbox");
       expect(out).not.toContain("icloud");

@@ -47,7 +47,7 @@ export function ensureVaultDirs(vaultPath: string): void {
 
 export function initGitRepo(vaultPath: string, io: CliIO): boolean {
   const gitDir = path.join(vaultPath, ".git");
-  if (fs.existsSync(gitDir)) {
+  if (fs.existsSync(gitDir) && fs.lstatSync(gitDir).isDirectory()) {
     io.stdout(`Using existing git repository at ${vaultPath}.\n`);
     return false;
   }
@@ -58,7 +58,9 @@ export function initGitRepo(vaultPath: string, io: CliIO): boolean {
   });
   if (result.exitCode !== 0) {
     const stderr = new TextDecoder().decode(result.stderr);
-    throw new Error(`git init failed: ${stderr.trim() || `exit code ${result.exitCode}`}`);
+    const trimmed = stderr.trim();
+    const detail = trimmed.length > 0 ? trimmed : `exit code ${result.exitCode}`;
+    throw new Error(`git init failed: ${detail}`);
   }
   return true;
 }

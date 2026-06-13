@@ -7,6 +7,14 @@ import { type Config, DEFAULT_CONFIG, readConfig, resolveLang, writeConfig } fro
 
 const CONFIG_SUBPATH = path.join("Library", "Application Support", "dennoh");
 
+function restoreDennohLang(originalLang: string | undefined): void {
+  if (originalLang === undefined) {
+    Reflect.deleteProperty(process.env, "DENNOH_LANG");
+  } else {
+    process.env.DENNOH_LANG = originalLang;
+  }
+}
+
 describe("config", () => {
   let tempDir: string;
   let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">>;
@@ -22,11 +30,7 @@ describe("config", () => {
   afterEach(() => {
     homedirSpy.mockRestore();
     fs.rmSync(tempDir, { recursive: true, force: true });
-    if (originalLang === undefined) {
-      Reflect.deleteProperty(process.env, "DENNOH_LANG");
-    } else {
-      process.env.DENNOH_LANG = originalLang;
-    }
+    restoreDennohLang(originalLang);
   });
 
   function writeRawConfig(payload: object): void {

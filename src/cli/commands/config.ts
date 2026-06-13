@@ -13,6 +13,11 @@ export function configGet(args: string[], io: CliIO): number {
   }
 
   if (key === "lang") {
+    const envLang = process.env.DENNOH_LANG;
+    if (envLang === "ja" || envLang === "en") {
+      io.stdout(`${resolveLang()}\n`);
+      return 0;
+    }
     try {
       readConfig();
     } catch (e) {
@@ -59,7 +64,12 @@ export function configSet(args: string[], io: CliIO): number {
       return 1;
     }
     next.lang = value;
-    writeConfig(next);
+    try {
+      writeConfig(next);
+    } catch (e) {
+      io.stderr(`${readError(e)}\n`);
+      return 1;
+    }
     return 0;
   }
 
@@ -76,7 +86,12 @@ export function configSet(args: string[], io: CliIO): number {
       return 1;
     }
     next.vaultPath = value;
-    writeConfig(next);
+    try {
+      writeConfig(next);
+    } catch (e) {
+      io.stderr(`${readError(e)}\n`);
+      return 1;
+    }
     return 0;
   }
 
