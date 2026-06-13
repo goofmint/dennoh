@@ -38,12 +38,7 @@ async function* walkMdFilesWithStats(
       if (entry.name === DENNOH_DIR) {
         continue;
       }
-      try {
-        yield* walkMdFilesWithStats(full, errors);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        errors.push({ path: full, message });
-      }
+      yield* walkMdFilesWithStats(full, errors);
     } else if (entry.isFile() && isNotePath(full)) {
       try {
         const stats = await fs.promises.stat(full);

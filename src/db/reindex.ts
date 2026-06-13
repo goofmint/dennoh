@@ -37,12 +37,7 @@ async function* walkMdFiles(
       if (entry.name === DENNOH_DIR) {
         continue;
       }
-      try {
-        yield* walkMdFiles(full, errors);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        errors.push({ path: full, message });
-      }
+      yield* walkMdFiles(full, errors);
     } else if (entry.isFile() && isNotePath(full)) {
       yield full;
     }
