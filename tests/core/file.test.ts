@@ -110,7 +110,9 @@ describe("file", () => {
     it("propagates parseFrontmatter errors for malformed content (UUID-v7 name)", async () => {
       const target = path.join(tempDir, `${generateId()}.md`);
       fs.writeFileSync(target, "no frontmatter here\n");
-      await expect(readNote(target)).rejects.toThrow();
+      await expect(readNote(target)).rejects.toThrow(
+        /Frontmatter delimiter '---' not found at the start of the file/
+      );
     });
   });
 
