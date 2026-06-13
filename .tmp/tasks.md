@@ -45,19 +45,19 @@
 
 ## T2. データモデル / Markdown 永続化 (F-1.4, F-1.5, F-3, 5.2, 5.3)
 
-- [ ] T2.1 UUID v7 生成ユーティリティ
+- [x] T2.1 UUID v7 生成ユーティリティ
   - 検証: 連続生成した UUID が時間ソート可能（昇順）
-- [ ] T2.2 ファイルパス解決（`<vault>/<YYYY>/<MM>/<DD>/<UUID>.md`）
+- [x] T2.2 ファイルパス解決（`<vault>/<YYYY>/<MM>/<DD>/<UUID>.md`）
   - 検証: 日付境界でディレクトリが正しく分かれる単体テスト
-- [ ] T2.3 frontmatter シリアライザ（`createdAt`, `updatedAt`, `source`, `title`, `projects`, `tags`、`id` は含めない）
+- [x] T2.3 frontmatter シリアライザ（`createdAt`, `updatedAt`, `source`, `title`, `projects`, `tags`、`id` は含めない）
   - 検証: シリアライズ→パースで構造が一致するラウンドトリップテスト
-- [ ] T2.4 frontmatter パーサ（既存 Markdown の YAML 読み込み）
+- [x] T2.4 frontmatter パーサ（既存 Markdown の YAML 読み込み）
   - 検証: 不正 YAML で例外、欠損フィールドは既定値
-- [ ] T2.5 アトミック書き込み（temp ファイル → rename）
+- [x] T2.5 アトミック書き込み（temp ファイル → rename）
   - 検証: 書き込み中プロセス kill で元ファイルが破壊されないユニットテスト
-- [ ] T2.6 ファイル名 UUID とパスから ID を取得するロジック
+- [x] T2.6 ファイル名 UUID とパスから ID を取得するロジック
   - 検証: `id = parseIdFromPath(path)` が UUID を返す
-- [ ] T2.7 `<vault>/.dennoh/` 作成と `.gitignore` 自動追加（`.dennoh/` を Git 管理対象から除外）
+- [x] T2.7 `<vault>/.dennoh/` 作成と `.gitignore` 自動追加（`.dennoh/` を Git 管理対象から除外）
   - 検証: `dennoh init` 後、`.gitignore` に `.dennoh/` が含まれる
 
 ---
