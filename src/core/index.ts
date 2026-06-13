@@ -9,3 +9,4 @@ export {
   updateFrontmatter,
 } from "./frontmatter";
 export { type NoteRead, readNote, writeFileAtomic, writeNote } from "./file";
+export * from "./extract";
