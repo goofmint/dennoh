@@ -4,6 +4,10 @@ import type { NoteSource } from "@/core/types";
 // so reads from `bun:sqlite` can be assigned without renaming. JSON columns
 // are stored as serialized arrays; deserialization is the caller's
 // responsibility (see `projects_json` / `tags_json`).
+//
+// `body` holds the original (Japanese-or-other) note body; `body_en` holds
+// the JA→EN translation. Both are introduced by migration v3 and used by
+// FTS5 search (notes_fts indexes title + body + body_en).
 export type NoteRow = {
   id: string;
   path: string;
@@ -13,6 +17,20 @@ export type NoteRow = {
   title: string | null;
   projects_json: string;
   tags_json: string;
+  body: string;
+  body_en: string;
+};
+
+// Filter shape for `searchMemory` (T6). Every field is optional so the
+// search endpoint can accept any subset; the implementation joins them with
+// AND semantics. Defined here so the search module imports a stable type
+// without circularity through the API barrel.
+export type SearchFilters = {
+  project?: string;
+  tag?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  source?: NoteSource;
 };
 
 // Search result shape used by T6 (`searchMemory`). Defined here so the

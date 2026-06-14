@@ -19,8 +19,18 @@ describe("core/memory", () => {
   let vaultPath: string;
   let db: Database;
   let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">>;
+  // Snapshot the original DENNOH_TRANSLATE_DISABLE so we can scope the
+  // override to this file without leaking it into other suites loaded by
+  // the same `bun test` worker.
+  let originalTranslateDisable: string | undefined;
 
   beforeEach(async () => {
+    originalTranslateDisable = process.env.DENNOH_TRANSLATE_DISABLE;
+    // Disable the JA→EN translation pipeline for these tests so we don't
+    // trigger a ~300MB model download and an async background task during
+    // fast unit tests.
+    process.env.DENNOH_TRANSLATE_DISABLE = "1";
+
     homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "dennoh-memory-home-"));
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), "dennoh-memory-vault-"));
     homedirSpy = spyOn(os, "homedir").mockReturnValue(homeDir);
@@ -40,6 +50,11 @@ describe("core/memory", () => {
     homedirSpy.mockRestore();
     fs.rmSync(homeDir, { recursive: true, force: true });
     fs.rmSync(vaultPath, { recursive: true, force: true });
+    if (originalTranslateDisable === undefined) {
+      Reflect.deleteProperty(process.env, "DENNOH_TRANSLATE_DISABLE");
+    } else {
+      process.env.DENNOH_TRANSLATE_DISABLE = originalTranslateDisable;
+    }
   });
 
   describe("saveMemory", () => {
@@ -92,6 +107,16 @@ describe("core/memory", () => {
       await expect(saveMemory(db, vaultPath, "good\0bad")).rejects.toBeInstanceOf(
         ContentValidationError
       );
+    });
+
+    it("inserts with body_en='' so the save returns without waiting on translation", async () => {
+      // With DENNOH_TRANSLATE_DISABLE=1 the background translator resolves
+      // to "" immediately, so this also confirms that the no-op branch of
+      // scheduleBodyEnUpdate does NOT overwrite body_en with "".
+      const id = await saveMemory(db, vaultPath, "save with empty translation");
+      const row = getNoteById(db, id);
+      expect(row?.body_en).toBe("");
+      expect(row?.body).toBe("save with empty translation");
     });
   });
 
@@ -168,6 +193,24 @@ describe("core/memory", () => {
       }
       const onDisk = await readNote(row.path);
       expect(onDisk.body).toContain("before");
+    });
+
+    it("preserves the existing body_en synchronously (re-translation happens in the background)", async () => {
+      const id = await saveMemory(db, vaultPath, "initial body");
+      // Manually seed a translation so we can verify it is NOT overwritten
+      // during the synchronous portion of updateMemory.
+      db.query("UPDATE notes SET body_en = ? WHERE id = ?").run("PRESEEDED_TRANSLATION", id);
+      expect(getNoteById(db, id)?.body_en).toBe("PRESEEDED_TRANSLATION");
+
+      await updateMemory(db, vaultPath, id, "rewritten body");
+
+      // Immediately after updateMemory resolves, body_en is still the
+      // previous value — the background translator (no-op under
+      // DENNOH_TRANSLATE_DISABLE=1) hasn't replaced it, and the synchronous
+      // updateNote call deliberately wrote the previous body_en through.
+      const row = getNoteById(db, id);
+      expect(row?.body).toBe("rewritten body");
+      expect(row?.body_en).toBe("PRESEEDED_TRANSLATION");
     });
   });
 

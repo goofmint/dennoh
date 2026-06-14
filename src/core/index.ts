@@ -15,4 +15,11 @@ export {
   type ContentValidationCode,
   validateContent,
 } from "./validate";
-export { deleteMemory, getNote, listRecent, saveMemory, updateMemory } from "./memory";
+export {
+  deleteMemory,
+  getNote,
+  listRecent,
+  saveMemory,
+  searchMemory,
+  updateMemory,
+} from "./memory";

@@ -32,9 +32,9 @@ function makeMetadata(overrides: Partial<NoteMetadata> = {}): NoteMetadata {
   };
 }
 
-function makeRow(overrides: Partial<NoteMetadata> = {}, body = "body text"): NoteRow {
+function makeRow(overrides: Partial<NoteMetadata> = {}, body = "body text", bodyEn = ""): NoteRow {
   const meta = makeMetadata(overrides);
-  return toNoteRow(meta, `/vault/2026/06/12/${meta.id}.md`, body);
+  return toNoteRow(meta, `/vault/2026/06/12/${meta.id}.md`, body, bodyEn);
 }
 
 function ftsCountByTitle(db: Database, term: string): number {
@@ -170,9 +170,11 @@ describe("db/repository", () => {
         projects: ["a", "b"],
         tags: ["x", "y"],
       });
-      const row = toNoteRow(meta, "/vault/2026/06/12/x.md", "body");
-      const { metadata, path: p } = fromNoteRow(row);
+      const row = toNoteRow(meta, "/vault/2026/06/12/x.md", "body", "english body");
+      const { metadata, path: p, body, body_en } = fromNoteRow(row);
       expect(metadata).toEqual(meta);
+      expect(body).toBe("body");
+      expect(body_en).toBe("english body");
       expect(p).toBe("/vault/2026/06/12/x.md");
     });
 
@@ -224,6 +226,25 @@ describe("db/repository", () => {
 
       const total = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM notes").get();
       expect(total?.c).toBe(0);
+    });
+
+    it("removes the row from notes_fts so FTS MATCH cannot surface it", () => {
+      // The AFTER UPDATE trigger guards re-insertion on `new.deleted_at IS
+      // NULL`. Without that guard, soft-delete would leave the row in
+      // notes_fts and only the JOIN filter on `searchNotes` would hide it
+      // — wasteful in FTS storage and broken for any future raw FTS query.
+      //
+      // We assert via MATCH count because external-content FTS5's
+      // `SELECT COUNT(*) FROM notes_fts` proxies through the content
+      // table (`notes`), so it still counts the soft-delete tombstone row
+      // even after the FTS index has been emptied. The MATCH-based query
+      // exercises the index itself.
+      const row = makeRow({ title: "FtsSoftDeleteTarget" });
+      insertNote(db, row);
+      expect(ftsCountByTitle(db, "FtsSoftDeleteTarget")).toBe(1);
+
+      softDeleteNote(db, row.id);
+      expect(ftsCountByTitle(db, "FtsSoftDeleteTarget")).toBe(0);
     });
   });
 });

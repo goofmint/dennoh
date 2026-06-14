@@ -4,8 +4,10 @@ import * as path from "node:path";
 
 import { readNote } from "@/core/file";
 import { DENNOH_DIR, isNotePath } from "@/core/path";
+import { translateJaToEn } from "@/translate";
 
 import { toNoteRow } from "./mapper";
+import type { TranslatorFn } from "./reindex";
 import { deleteNote, getAllNotes, insertNote, updateNote } from "./repository";
 
 export type SyncResult = {
@@ -13,6 +15,10 @@ export type SyncResult = {
   updated: number;
   deleted: number;
   errors: { path: string; message: string }[];
+  // See `ReindexResult.translationErrors` — same semantics: thrown
+  // translator errors land here so operational tooling can distinguish
+  // translation outages from actual data-pipeline failures.
+  translationErrors: { path: string; message: string }[];
 };
 
 // Walker variant that also returns mtime so the diff loop can decide whether
@@ -51,11 +57,16 @@ async function* walkMdFilesWithStats(
   }
 }
 
-export async function scanAndSync(db: Database, vaultPath: string): Promise<SyncResult> {
+export async function scanAndSync(
+  db: Database,
+  vaultPath: string,
+  translate: TranslatorFn = translateJaToEn
+): Promise<SyncResult> {
   // Pull the FS view first so we have a stable snapshot before touching the
   // DB; reading both then diffing minimizes the time window where external
   // writes during scan could be missed.
   const errors: SyncResult["errors"] = [];
+  const translationErrors: SyncResult["translationErrors"] = [];
   const fsFiles = new Map<string, number>();
   for await (const file of walkMdFilesWithStats(vaultPath, errors)) {
     fsFiles.set(file.path, file.mtimeMs);
@@ -78,7 +89,17 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
     if (existing === undefined) {
       try {
         const { id, frontmatter, body } = await readNote(filePath);
-        insertNote(db, toNoteRow({ ...frontmatter, id }, filePath, body));
+        // Translate on insert so externally-added files land with both
+        // body and body_en populated. Throws from the injected translator
+        // are recorded, the row still lands with body_en="".
+        let bodyEn = "";
+        try {
+          bodyEn = await translate(body);
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          translationErrors.push({ path: filePath, message });
+        }
+        insertNote(db, toNoteRow({ ...frontmatter, id }, filePath, body, bodyEn));
         added++;
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -90,7 +111,22 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
     if (Number.isNaN(updatedAtMs) || mtimeMs > updatedAtMs) {
       try {
         const { id, frontmatter, body } = await readNote(filePath);
-        updateNote(db, toNoteRow({ ...frontmatter, id }, filePath, body));
+        // Re-translate only when the body actually changed. mtime bumps
+        // can fire on touch / metadata-only edits, and translation is the
+        // expensive part of an UPDATE — comparing against the DB-stored
+        // body lets us reuse the existing body_en when the source text
+        // is byte-identical.
+        let bodyEn = existing.body_en;
+        if (body !== existing.body) {
+          try {
+            bodyEn = await translate(body);
+          } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            translationErrors.push({ path: filePath, message });
+            bodyEn = "";
+          }
+        }
+        updateNote(db, toNoteRow({ ...frontmatter, id }, filePath, body, bodyEn));
         updated++;
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -113,5 +149,5 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
     }
   }
 
-  return { added, updated, deleted, errors };
+  return { added, updated, deleted, errors, translationErrors };
 }
