@@ -61,14 +61,83 @@ const MIGRATIONS: Record<number, Migration> = {
     // for internal use (tests, true purge) and bypasses this column.
     db.exec("ALTER TABLE notes ADD COLUMN deleted_at TEXT;");
   },
+  3: (db) => {
+    // Add the original `body` (Japanese / source language) and `body_en`
+    // (JA→EN machine translation) columns. NOT NULL DEFAULT '' so existing
+    // v2 rows pick up empty strings without manual backfill; new writes
+    // populate both via `toNoteRow`. Translation is performed in
+    // `saveMemory` / `updateMemory` via `@/translate`, with empty string
+    // on failure (translation is optional and must not block saves).
+    db.exec(
+      "ALTER TABLE notes ADD COLUMN body TEXT NOT NULL DEFAULT '';" +
+        "ALTER TABLE notes ADD COLUMN body_en TEXT NOT NULL DEFAULT '';"
+    );
+
+    // FTS5 only supports a *single* tokenizer per virtual table — we cannot
+    // mix `unicode61` for English-friendly columns with a CJK-aware
+    // tokenizer for body. `unicode61 remove_diacritics 0` is the chosen
+    // single tokenizer: it splits on non-letter characters and lowercases,
+    // which is correct for ASCII / accented Latin and leaves Vietnamese
+    // queryable in its original diacritics.
+    //
+    // Known limitation: unicode61 treats runs of CJK letters as a single
+    // token. Japanese sub-token search (e.g., querying `日記` against the
+    // body `今日の日記とメモ`) will NOT match — the run is one token.
+    // English search against `body_en` works normally; this is why the
+    // JA→EN translation column is the primary path for cross-language
+    // search. A future migration can swap to the FTS5 `trigram` tokenizer
+    // to fix Japanese substring search at the cost of larger indexes.
+    //
+    // The migration drops the title-only v1 FTS, rebuilds it with title +
+    // body + body_en, and re-creates the sync triggers to mirror the new
+    // column set. Existing live rows are re-inserted so the index picks
+    // up their (empty) body / body_en defaults plus the preserved title.
+    db.exec(
+      "DROP TRIGGER IF EXISTS notes_after_insert;" +
+        "DROP TRIGGER IF EXISTS notes_after_delete;" +
+        "DROP TRIGGER IF EXISTS notes_after_update;" +
+        "DROP TABLE IF EXISTS notes_fts;"
+    );
+
+    db.exec(`
+      CREATE VIRTUAL TABLE notes_fts USING fts5(
+        title,
+        body,
+        body_en,
+        content='notes',
+        content_rowid='rowid',
+        tokenize='unicode61 remove_diacritics 0'
+      );
+    `);
+
+    db.exec(`
+      CREATE TRIGGER notes_after_insert AFTER INSERT ON notes BEGIN
+        INSERT INTO notes_fts(rowid, title, body, body_en)
+        VALUES (new.rowid, new.title, new.body, new.body_en);
+      END;
+      CREATE TRIGGER notes_after_delete AFTER DELETE ON notes BEGIN
+        INSERT INTO notes_fts(notes_fts, rowid, title, body, body_en)
+        VALUES ('delete', old.rowid, old.title, old.body, old.body_en);
+      END;
+      CREATE TRIGGER notes_after_update AFTER UPDATE ON notes BEGIN
+        INSERT INTO notes_fts(notes_fts, rowid, title, body, body_en)
+        VALUES ('delete', old.rowid, old.title, old.body, old.body_en);
+        INSERT INTO notes_fts(rowid, title, body, body_en)
+        VALUES (new.rowid, new.title, new.body, new.body_en);
+      END;
+    `);
+
+    // Repopulate FTS from existing live rows. v2 rows have body='' /
+    // body_en='' from the DEFAULTs above, so this restores title-only
+    // searchability and leaves body indexing empty until the user re-saves.
+    db.exec(`
+      INSERT INTO notes_fts(rowid, title, body, body_en)
+      SELECT rowid, title, body, body_en FROM notes WHERE deleted_at IS NULL;
+    `);
+  },
   // Future migration patterns to follow when extending this map:
-  //   3: (db) => { db.exec("CREATE INDEX ... ON notes(...)"); }       // index add
-  //   4: (db) => { /* data transform: SELECT old, INSERT new, etc. */ } // data transform
-  //   5: (db) => {                                                     // FTS rebuild
-  //        db.exec("DROP TABLE notes_fts;");
-  //        db.exec("CREATE VIRTUAL TABLE notes_fts USING fts5(...);");
-  //        db.exec("INSERT INTO notes_fts(rowid, title) SELECT rowid, title FROM notes;");
-  //      }
+  //   4: (db) => { db.exec("CREATE INDEX ... ON notes(...)"); }       // index add
+  //   5: (db) => { /* data transform: SELECT old, INSERT new, etc. */ } // data transform
 };
 
 const SCHEMA_VERSION_TABLE_SQL = `

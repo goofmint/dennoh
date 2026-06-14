@@ -6,6 +6,7 @@ import * as readline from "node:readline/promises";
 import type { CliIO } from "@/cli/types";
 import { writeConfig } from "@/config";
 import { DENNOH_DIR } from "@/core";
+import { initializeTranslationModel } from "@/translate";
 
 export type PromptVaultPathFn = (io: CliIO) => Promise<string>;
 
@@ -152,6 +153,19 @@ export async function initCommand(deps: InitDeps): Promise<number> {
     io.stdout(`  - created ${path.join(vaultPath, DENNOH_DIR)}\n`);
     io.stdout(`  - ${gitignoreChanged ? "added" : "kept"} ${DENNOH_DIR}/ in .gitignore\n`);
     io.stdout("  - wrote dennoh config\n");
+
+    // Pre-cache the JA→EN translation model. Failure is absorbed with a
+    // visible warning because translation is optional — a network glitch
+    // during init must not prevent the user from getting a working vault.
+    try {
+      io.stdout("  - caching translation model (this may take a while on first run)\n");
+      await initializeTranslationModel();
+      io.stdout("  - cached translation model\n");
+    } catch (e) {
+      io.stderr(
+        `Warning: translation model not cached (will retry on first save): ${readError(e)}\n`
+      );
+    }
 
     const cloud = detectCloudSync(vaultPath);
     if (cloud !== null) {

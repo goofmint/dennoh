@@ -1,3 +1,7 @@
+// Disable the JA→EN translation pipeline for memory tests so we don't trigger
+// a ~300MB model download and an async background task during fast unit tests.
+process.env.DENNOH_TRANSLATE_DISABLE = "1";
+
 import type { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";

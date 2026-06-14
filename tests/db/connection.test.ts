@@ -73,7 +73,7 @@ describe("db/connection", () => {
         expect(tables).toContain("notes_fts");
         expect(tables).toContain("schema_version");
 
-        expect(getCurrentVersion(db)).toBe(2);
+        expect(getCurrentVersion(db)).toBe(3);
       } finally {
         closeDatabase(db);
       }
@@ -89,7 +89,7 @@ describe("db/connection", () => {
             "SELECT version, applied_at FROM schema_version ORDER BY version"
           )
           .all();
-        expect(firstRows.length).toBe(2);
+        expect(firstRows.length).toBe(3);
 
         runMigrations(db);
 
@@ -99,7 +99,7 @@ describe("db/connection", () => {
           )
           .all();
         expect(secondRows).toEqual(firstRows);
-        expect(getCurrentVersion(db)).toBe(2);
+        expect(getCurrentVersion(db)).toBe(3);
       } finally {
         closeDatabase(db);
       }

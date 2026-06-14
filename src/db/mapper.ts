@@ -26,14 +26,18 @@ function parseSource(value: string): NoteSource {
   return value as NoteSource;
 }
 
-// toNoteRow: NoteMetadata + path + body → notes table row.
+// toNoteRow: NoteMetadata + path + body + bodyEn → notes table row.
 //
-// `body` is accepted for forward compatibility — eventually the FTS index will
-// carry body tokens (T6 search) and this mapper will project them into a
-// `notes_fts` payload. Today, `notes` has no body column and `notes_fts` only
-// indexes `title`, so the parameter is retained at the API boundary but not
-// stored. Prefixing with `_` satisfies tsconfig `noUnusedParameters`.
-export function toNoteRow(metadata: NoteMetadata, path: string, _body: string): NoteRow {
+// `body` is the original (typically Japanese) note body. `bodyEn` is the
+// JA→EN machine translation produced by `@/translate`, or "" when
+// translation is disabled / failed / skipped (non-Japanese content). Both
+// land in their respective columns and feed `notes_fts` for search.
+export function toNoteRow(
+  metadata: NoteMetadata,
+  path: string,
+  body: string,
+  bodyEn: string
+): NoteRow {
   return {
     id: metadata.id,
     path,
@@ -43,13 +47,22 @@ export function toNoteRow(metadata: NoteMetadata, path: string, _body: string): 
     title: metadata.title ?? null,
     projects_json: JSON.stringify(metadata.projects),
     tags_json: JSON.stringify(metadata.tags),
+    body,
+    body_en: bodyEn,
   };
 }
 
-// fromNoteRow: notes row → { metadata, path }.
-// The body is intentionally not returned because it lives in the .md file on
-// disk, not in `notes`; callers that need it pair this with `readNote`.
-export function fromNoteRow(row: NoteRow): { metadata: NoteMetadata; path: string } {
+// fromNoteRow: notes row → { metadata, path, body, body_en }.
+// `body` / `body_en` are surfaced because v3 stores them on the row directly
+// (they are no longer "live only in the .md file"). Callers that only need
+// the path / metadata can ignore them; structural compatibility with the
+// pre-v3 return is preserved by additive widening.
+export function fromNoteRow(row: NoteRow): {
+  metadata: NoteMetadata;
+  path: string;
+  body: string;
+  body_en: string;
+} {
   const projects = ensureStringArray(JSON.parse(row.projects_json), "projects_json");
   const tags = ensureStringArray(JSON.parse(row.tags_json), "tags_json");
   const source = parseSource(row.source);
@@ -68,5 +81,7 @@ export function fromNoteRow(row: NoteRow): { metadata: NoteMetadata; path: strin
   return {
     metadata: { ...frontmatter, id: row.id },
     path: row.path,
+    body: row.body,
+    body_en: row.body_en,
   };
 }

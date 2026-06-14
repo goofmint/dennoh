@@ -32,9 +32,9 @@ function makeMetadata(overrides: Partial<NoteMetadata> = {}): NoteMetadata {
   };
 }
 
-function makeRow(overrides: Partial<NoteMetadata> = {}, body = "body text"): NoteRow {
+function makeRow(overrides: Partial<NoteMetadata> = {}, body = "body text", bodyEn = ""): NoteRow {
   const meta = makeMetadata(overrides);
-  return toNoteRow(meta, `/vault/2026/06/12/${meta.id}.md`, body);
+  return toNoteRow(meta, `/vault/2026/06/12/${meta.id}.md`, body, bodyEn);
 }
 
 function ftsCountByTitle(db: Database, term: string): number {
@@ -170,9 +170,11 @@ describe("db/repository", () => {
         projects: ["a", "b"],
         tags: ["x", "y"],
       });
-      const row = toNoteRow(meta, "/vault/2026/06/12/x.md", "body");
-      const { metadata, path: p } = fromNoteRow(row);
+      const row = toNoteRow(meta, "/vault/2026/06/12/x.md", "body", "english body");
+      const { metadata, path: p, body, body_en } = fromNoteRow(row);
       expect(metadata).toEqual(meta);
+      expect(body).toBe("body");
+      expect(body_en).toBe("english body");
       expect(p).toBe("/vault/2026/06/12/x.md");
     });
 

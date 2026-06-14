@@ -40,9 +40,12 @@
     "typescript": "^5.7.2"
   },
   "trustedDependencies": [
-    "@biomejs/biome"
+    "@biomejs/biome",
+    "onnxruntime-node",
+    "protobufjs"
   ],
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "isomorphic-git": "^1.38.4",
     "uuidv7": "^1.2.1",
     "yaml": "^2.9.0"

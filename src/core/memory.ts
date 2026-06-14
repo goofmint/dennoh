@@ -3,9 +3,17 @@ import * as fs from "node:fs";
 
 import { readConfig } from "@/config";
 import { fromNoteRow, toNoteRow } from "@/db/mapper";
-import { getAllNotes, getNoteById, insertNote, softDeleteNote, updateNote } from "@/db/repository";
-import type { NoteRow } from "@/db/types";
+import {
+  getAllNotes,
+  getNoteById,
+  insertNote,
+  searchNotes,
+  softDeleteNote,
+  updateNote,
+} from "@/db/repository";
+import type { NoteRow, NoteSearchResult, SearchFilters } from "@/db/types";
 import { gitAdd, gitCommit, gitRemove } from "@/git/commit";
+import { translateJaToEn } from "@/translate";
 
 import { extractMentions } from "./extract";
 import { type NoteRead, readNote, writeFileAtomic, writeNote } from "./file";
@@ -15,6 +23,7 @@ import { generateId } from "./uuid";
 import { validateContent } from "./validate";
 
 const DEFAULT_RECENT_LIMIT = 10;
+const DEFAULT_SEARCH_LIMIT = 20;
 
 // Failure model across saveMemory / updateMemory / deleteMemory:
 //
@@ -53,8 +62,15 @@ export async function saveMemory(
 
   const filePath = await writeNote(vaultPath, id, now, frontmatter, content);
 
+  // Inline JA→EN translation: blocks the save by design so the FTS index
+  // gets populated with `body_en` in the same transaction as the rest of
+  // the row. Failure is absorbed inside `translateJaToEn` (returns "") so
+  // a translation error never blocks the save itself — the row still
+  // lands with body_en="" and the note remains searchable by title / body.
+  const bodyEn = await translateJaToEn(content);
+
   const metadata = { ...frontmatter, id };
-  insertNote(db, toNoteRow(metadata, filePath, content));
+  insertNote(db, toNoteRow(metadata, filePath, content, bodyEn));
 
   await gitAdd(vaultPath, filePath);
   await gitCommit(vaultPath, `add ${id}`);
@@ -99,8 +115,13 @@ export async function updateMemory(
   // write. Using the stored `path` keeps the file in place by construction.
   await writeFileAtomic(filePath, serializeFrontmatter(nextFrontmatter, content));
 
+  // Re-translate the new body. Same blocking-but-failure-tolerant policy as
+  // saveMemory: body_en falls back to "" on any translation failure, so the
+  // update still lands and the row stays searchable on title / body.
+  const bodyEn = await translateJaToEn(content);
+
   const metadata = { ...nextFrontmatter, id };
-  updateNote(db, toNoteRow(metadata, filePath, content));
+  updateNote(db, toNoteRow(metadata, filePath, content, bodyEn));
 
   await gitAdd(vaultPath, filePath);
   await gitCommit(vaultPath, `update ${id}`);
@@ -124,6 +145,19 @@ export async function getNote(
   }
   const { path: filePath } = fromNoteRow(row);
   return await readNote(filePath);
+}
+
+// Thin wrapper around the db-layer `searchNotes`. The core layer carries the
+// product default (20) so the CLI / MCP boundary doesn't have to hardcode it,
+// and limit validation is delegated downstream so the policy lives in one
+// place. Filter shape and result shape are pass-through.
+export function searchMemory(
+  db: Database,
+  query: string,
+  filters?: SearchFilters,
+  limit: number = DEFAULT_SEARCH_LIMIT
+): NoteSearchResult[] {
+  return searchNotes(db, query, filters, limit);
 }
 
 // listRecent surfaces the most-recently-updated live notes for the CLI / MCP
