@@ -227,5 +227,24 @@ describe("db/repository", () => {
       const total = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM notes").get();
       expect(total?.c).toBe(0);
     });
+
+    it("removes the row from notes_fts so FTS MATCH cannot surface it", () => {
+      // The AFTER UPDATE trigger guards re-insertion on `new.deleted_at IS
+      // NULL`. Without that guard, soft-delete would leave the row in
+      // notes_fts and only the JOIN filter on `searchNotes` would hide it
+      // — wasteful in FTS storage and broken for any future raw FTS query.
+      //
+      // We assert via MATCH count because external-content FTS5's
+      // `SELECT COUNT(*) FROM notes_fts` proxies through the content
+      // table (`notes`), so it still counts the soft-delete tombstone row
+      // even after the FTS index has been emptied. The MATCH-based query
+      // exercises the index itself.
+      const row = makeRow({ title: "FtsSoftDeleteTarget" });
+      insertNote(db, row);
+      expect(ftsCountByTitle(db, "FtsSoftDeleteTarget")).toBe(1);
+
+      softDeleteNote(db, row.id);
+      expect(ftsCountByTitle(db, "FtsSoftDeleteTarget")).toBe(0);
+    });
   });
 });

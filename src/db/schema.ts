@@ -110,20 +110,37 @@ const MIGRATIONS: Record<number, Migration> = {
       );
     `);
 
+    // The three trigger bodies use INSERT…SELECT…WHERE so they only
+    // touch notes_fts when the row's live-state actually requires it.
+    // Invariant: notes_fts contains exactly one entry per row whose
+    // deleted_at IS NULL. The transitions:
+    //   - INSERT live row             → add to FTS
+    //   - UPDATE live → live          → replace FTS entry
+    //   - UPDATE live → soft-deleted  → remove FTS entry
+    //   - UPDATE soft → live (undo)   → add FTS entry
+    //   - DELETE live row             → remove FTS entry
+    //   - DELETE soft-deleted row     → no-op (FTS already empty)
+    // Without the conditional 'delete' on hard-delete, a hard delete that
+    // follows a soft delete tries to 'delete' a rowid no longer in FTS
+    // and corrupts the index ("database disk image is malformed").
     db.exec(`
       CREATE TRIGGER notes_after_insert AFTER INSERT ON notes BEGIN
         INSERT INTO notes_fts(rowid, title, body, body_en)
-        VALUES (new.rowid, new.title, new.body, new.body_en);
+        SELECT new.rowid, new.title, new.body, new.body_en
+        WHERE new.deleted_at IS NULL;
       END;
       CREATE TRIGGER notes_after_delete AFTER DELETE ON notes BEGIN
         INSERT INTO notes_fts(notes_fts, rowid, title, body, body_en)
-        VALUES ('delete', old.rowid, old.title, old.body, old.body_en);
+        SELECT 'delete', old.rowid, old.title, old.body, old.body_en
+        WHERE old.deleted_at IS NULL;
       END;
       CREATE TRIGGER notes_after_update AFTER UPDATE ON notes BEGIN
         INSERT INTO notes_fts(notes_fts, rowid, title, body, body_en)
-        VALUES ('delete', old.rowid, old.title, old.body, old.body_en);
+        SELECT 'delete', old.rowid, old.title, old.body, old.body_en
+        WHERE old.deleted_at IS NULL;
         INSERT INTO notes_fts(rowid, title, body, body_en)
-        VALUES (new.rowid, new.title, new.body, new.body_en);
+        SELECT new.rowid, new.title, new.body, new.body_en
+        WHERE new.deleted_at IS NULL;
       END;
     `);
 

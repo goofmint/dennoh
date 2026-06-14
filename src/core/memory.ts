@@ -33,6 +33,40 @@ const DEFAULT_SEARCH_LIMIT = 20;
 // file vs DB state, and `gitCommit` can be retried on the next save without
 // data loss. We do NOT swallow inner errors — the caller is told what failed.
 
+// Background JA→EN translation. Called after gitCommit has resolved so the
+// save returns to the caller immediately; the translation pipeline (model
+// load + inference) can take seconds on a cold start and must not block the
+// user-visible operation.
+//
+// Safety properties:
+//   - Errors are swallowed via `.catch()` so the floating Promise never
+//     surfaces as an unhandled rejection. The translator itself absorbs
+//     failures into "" by design; the catch is for any pathological throw.
+//   - Returns "" → no DB update. We never overwrite an existing body_en
+//     with empty string, so prior translations survive a disable/failure.
+//   - `WHERE body = ?` on the UPDATE guards against stale writes: if the
+//     row's body changed between the snapshot we translated and the time
+//     the background task completes, the UPDATE matches zero rows and is
+//     a silent no-op — the next save's translation will repopulate.
+//
+// The promise is returned so test code can `await` it; production callers
+// invoke via `void scheduleBodyEnUpdate(...)`.
+function scheduleBodyEnUpdate(db: Database, id: string, content: string): Promise<void> {
+  return translateJaToEn(content)
+    .then((bodyEn) => {
+      if (bodyEn.length === 0) {
+        return;
+      }
+      db.query("UPDATE notes SET body_en = ? WHERE id = ? AND body = ?").run(bodyEn, id, content);
+    })
+    .catch((err) => {
+      const detail = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `[dennoh translate] background body_en update failed for id=${id}: ${detail}\n`
+      );
+    });
+}
+
 export async function saveMemory(
   db: Database,
   vaultPath: string,
@@ -62,18 +96,19 @@ export async function saveMemory(
 
   const filePath = await writeNote(vaultPath, id, now, frontmatter, content);
 
-  // Inline JA→EN translation: blocks the save by design so the FTS index
-  // gets populated with `body_en` in the same transaction as the rest of
-  // the row. Failure is absorbed inside `translateJaToEn` (returns "") so
-  // a translation error never blocks the save itself — the row still
-  // lands with body_en="" and the note remains searchable by title / body.
-  const bodyEn = await translateJaToEn(content);
-
+  // Insert immediately with body_en = "". The model-load + inference path
+  // can take many seconds on a cold start; blocking the save on it would
+  // make CLI / MCP save latency unpredictable. The row is searchable by
+  // title and body right away; `scheduleBodyEnUpdate` patches body_en
+  // after gitCommit returns.
   const metadata = { ...frontmatter, id };
-  insertNote(db, toNoteRow(metadata, filePath, content, bodyEn));
+  insertNote(db, toNoteRow(metadata, filePath, content, ""));
 
   await gitAdd(vaultPath, filePath);
   await gitCommit(vaultPath, `add ${id}`);
+
+  // Fire-and-forget. Not awaited — the caller gets `id` immediately.
+  void scheduleBodyEnUpdate(db, id, content);
 
   return id;
 }
@@ -115,16 +150,19 @@ export async function updateMemory(
   // write. Using the stored `path` keeps the file in place by construction.
   await writeFileAtomic(filePath, serializeFrontmatter(nextFrontmatter, content));
 
-  // Re-translate the new body. Same blocking-but-failure-tolerant policy as
-  // saveMemory: body_en falls back to "" on any translation failure, so the
-  // update still lands and the row stays searchable on title / body.
-  const bodyEn = await translateJaToEn(content);
-
+  // Keep the previous translation synchronously. body_en is stale relative
+  // to the new content until the background task completes, but that's
+  // preferable to either (a) blocking the update on translation latency,
+  // or (b) clearing body_en to "" mid-update and losing cross-language
+  // searchability in the gap. The background task patches body_en once
+  // the new translation lands.
   const metadata = { ...nextFrontmatter, id };
-  updateNote(db, toNoteRow(metadata, filePath, content, bodyEn));
+  updateNote(db, toNoteRow(metadata, filePath, content, row.body_en));
 
   await gitAdd(vaultPath, filePath);
   await gitCommit(vaultPath, `update ${id}`);
+
+  void scheduleBodyEnUpdate(db, id, content);
 }
 
 // Read-side helpers below: no git, no validation, no writes.
