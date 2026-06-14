@@ -64,66 +64,66 @@
 
 ## T3. `#` / `@` 抽出 (F-1.6)
 
-- [ ] T3.1 正規表現実装（`#([\p{L}\p{N}_-]+)` / `@([\p{L}\p{N}_-]+)`、Unicode フラグ）
+- [x] T3.1 正規表現実装（`#([\p{L}\p{N}_-]+)` / `@([\p{L}\p{N}_-]+)`、Unicode フラグ）
   - 検証: 日本語タグ `#日記` `@仕事` を抽出できるテスト
-- [ ] T3.2 誤抽出回避: URL 内 `#fragment` を除外
+- [x] T3.2 誤抽出回避: URL 内 `#fragment` を除外
   - 検証: `https://example.com#foo` から `#foo` を抽出しないテスト
-- [ ] T3.3 誤抽出回避: Markdown 見出し `# H1` を除外（行頭 `#` + スペース）
+- [x] T3.3 誤抽出回避: Markdown 見出し `# H1` を除外（行頭 `#` + スペース）
   - 検証: `# 見出し` から `#見出し` を抽出しないテスト
-- [ ] T3.4 誤抽出回避: メールアドレス `user@example.com` の `@example` を除外
+- [x] T3.4 誤抽出回避: メールアドレス `user@example.com` の `@example` を除外
   - 検証: 該当テスト
-- [ ] T3.5 抽出結果を frontmatter `projects` / `tags` に反映（重複除去・順序保持）
+- [x] T3.5 抽出結果を frontmatter `projects` / `tags` に反映（重複除去・順序保持）
   - 検証: 本文に `#a #b #a` で `projects: [a, b]`
 
 ---
 
 ## T4. SQLite / FTS インデックス (F-6)
 
-- [ ] T4.1 SQLite 接続層（`<vault>/.dennoh/index.db`、Bun の `bun:sqlite` 利用）
+- [x] T4.1 SQLite 接続層（`<vault>/.dennoh/index.db`、Bun の `bun:sqlite` 利用）
   - 検証: 接続→クエリ→クローズの単体テスト
-- [ ] T4.2 スキーマ（`notes(id PK, path, created_at, updated_at, source, title, projects_json, tags_json)`、`notes_fts` FTS5 仮想テーブル）
+- [x] T4.2 スキーマ（`notes(id PK, path, created_at, updated_at, source, title, projects_json, tags_json)`、`notes_fts` FTS5 仮想テーブル）
   - 検証: マイグレーション後にテーブル/仮想テーブルが存在
-- [ ] T4.3 スキーマバージョン管理（`schema_version` テーブル + マイグレーション）
+- [x] T4.3 スキーマバージョン管理（`schema_version` テーブル + マイグレーション）
   - 検証: 初回起動でバージョン記録、二度目はスキップ
-- [ ] T4.4 ノート insert / update / delete を反映する書き込み層
+- [x] T4.4 ノート insert / update / delete を反映する書き込み層
   - 検証: 3操作後に `notes` と `notes_fts` が同期している
-- [ ] T4.5 全件再インデックス（`dennoh reindex` の中核ロジック）
+- [x] T4.5 全件再インデックス（`dennoh reindex` の中核ロジック）
   - 検証: DB を消した後 reindex で行数が一致
-- [ ] T4.6 起動時の差分スキャン（ファイル mtime と DB updated_at の比較）
+- [x] T4.6 起動時の差分スキャン（ファイル mtime と DB updated_at の比較）
   - 検証: 1ファイルを外部で書き換え→起動→DB の更新時刻が反映
 
 ---
 
 ## T5. メモ CRUD コア (F-1.1〜F-1.3, F-1.7, F-1.8)
 
-- [ ] T5.1 `saveMemory(content, source?)` 実装（UUID 生成→frontmatter 付与→書き込み→DB 反映→Git commit）
+- [x] T5.1 `saveMemory(content, source?)` 実装（UUID 生成→frontmatter 付与→書き込み→DB 反映→Git commit）
   - 検証: 呼び出し後、ファイル・DB 行・Git コミットの3点が揃う統合テスト
-- [ ] T5.2 `updateMemory(id, content)` 実装（既存 frontmatter 維持、`updatedAt` 更新、再抽出、再インデックス、再 commit）
+- [x] T5.2 `updateMemory(id, content)` 実装（既存 frontmatter 維持、`updatedAt` 更新、再抽出、再インデックス、再 commit）
   - 検証: 更新前後で `createdAt` 不変、`updatedAt` 更新、`projects`/`tags` 再抽出
-- [ ] T5.3 `deleteMemory(id)` 実装（ファイル削除、DB 行削除、Git commit）
+- [x] T5.3 `deleteMemory(id)` 実装（ファイル削除、DB 行削除、Git commit）
   - 検証: 削除後 `getNote(id)` が null、DB に行なし、ログに commit
-- [ ] T5.4 `getNote(id)` 実装（ID から path を逆引き→読み込み）
+- [x] T5.4 `getNote(id)` 実装（ID から path を逆引き→読み込み）
   - 検証: 保存→取得で content が一致
-- [ ] T5.5 `listRecent(limit?)` 実装（`updated_at DESC` で取得）
+- [x] T5.5 `listRecent(limit?)` 実装（`updated_at DESC` で取得）
   - 検証: 連続保存後 limit=3 で最新3件が返る
 
 ---
 
 ## T6. 検索 (F-2)
 
-- [ ] T6.1 `searchMemory(query, filters?, limit?)` 実装（FTS MATCH ベース）
+- [x] T6.1 `searchMemory(query, filters?, limit?)` 実装（FTS MATCH ベース）
   - 検証: 「FTS テスト」を本文に含むノートを `query: "FTS"` で取得
-- [ ] T6.2 フィルタ `project` 対応（`projects_json` に該当値が含まれるノートに絞る）
+- [x] T6.2 フィルタ `project` 対応（`projects_json` に該当値が含まれるノートに絞る）
   - 検証: `#denno` のメモのみ返す統合テスト
-- [ ] T6.3 フィルタ `tag` 対応
+- [x] T6.3 フィルタ `tag` 対応
   - 検証: `@mcp` のメモのみ返す
-- [ ] T6.4 フィルタ `date range`（`updated_at` 範囲）
+- [x] T6.4 フィルタ `date range`（`updated_at` 範囲）
   - 検証: 日付外のノートが返らない
-- [ ] T6.5 フィルタ `source` 対応
+- [x] T6.5 フィルタ `source` 対応
   - 検証: `source: 'note'` で絞れる（v0.1 は note のみだが将来拡張点として実装）
-- [ ] T6.6 スニペット生成（FTS の `snippet()` 関数活用、前後 N 文字）
+- [x] T6.6 スニペット生成（FTS の `snippet()` 関数活用、前後 N 文字）
   - 検証: ヒット箇所がスニペットに含まれる
-- [ ] T6.7 検索結果に必要フィールド（id, path, title, snippet, createdAt, updatedAt, source, projects, tags）を含める
+- [x] T6.7 検索結果に必要フィールド（id, path, title, snippet, createdAt, updatedAt, source, projects, tags）を含める
   - 検証: 戻り値スキーマのテスト
 
 ---

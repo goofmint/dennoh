@@ -14,10 +14,12 @@ import {
 import type { NoteRow, NoteSearchResult, SearchFilters } from "@/db/types";
 import { gitAdd, gitCommit, gitRemove } from "@/git/commit";
 import { translateJaToEn } from "@/translate";
+import { markWriteEnd, markWriteStart } from "@/watch/pending-writes";
 
 import { extractMentions } from "./extract";
 import { type NoteRead, readNote, writeFileAtomic, writeNote } from "./file";
 import { isoWithLocalOffset, serializeFrontmatter, updateFrontmatter } from "./frontmatter";
+import { buildNotePath } from "./path";
 import type { NoteFrontmatter, NoteSource } from "./types";
 import { generateId } from "./uuid";
 import { validateContent } from "./validate";
@@ -94,20 +96,36 @@ export async function saveMemory(
     tags,
   };
 
-  const filePath = await writeNote(vaultPath, id, now, frontmatter, content);
+  // Resolve the target path up-front so the pending-write marker is in place
+  // before any disk activity. `writeNote` derives the same path internally
+  // from (vaultPath, id, now) via `buildNotePath`, so this is the exact key
+  // the watcher will observe.
+  const filePath = buildNotePath(vaultPath, id, now);
 
-  // Insert immediately with body_en = "". The model-load + inference path
-  // can take many seconds on a cold start; blocking the save on it would
-  // make CLI / MCP save latency unpredictable. The row is searchable by
-  // title and body right away; `scheduleBodyEnUpdate` patches body_en
-  // after gitCommit returns.
-  const metadata = { ...frontmatter, id };
-  insertNote(db, toNoteRow(metadata, filePath, content, ""));
+  markWriteStart(filePath);
+  try {
+    await writeNote(vaultPath, id, now, frontmatter, content);
 
-  await gitAdd(vaultPath, filePath);
-  await gitCommit(vaultPath, `add ${id}`);
+    // Insert immediately with body_en = "". The model-load + inference path
+    // can take many seconds on a cold start; blocking the save on it would
+    // make CLI / MCP save latency unpredictable. The row is searchable by
+    // title and body right away; `scheduleBodyEnUpdate` patches body_en
+    // after gitCommit returns.
+    const metadata = { ...frontmatter, id };
+    insertNote(db, toNoteRow(metadata, filePath, content, ""));
+
+    await gitAdd(vaultPath, filePath);
+    await gitCommit(vaultPath, `add ${id}`);
+  } finally {
+    // finally is mandatory: if writeNote / insertNote / gitAdd / gitCommit
+    // throws, we must still clear the marker so the watcher does not stay
+    // permanently muted for this path on a later external edit.
+    markWriteEnd(filePath);
+  }
 
   // Fire-and-forget. Not awaited — the caller gets `id` immediately.
+  // Intentionally outside the markWrite window: this only mutates the DB row,
+  // not the file, so the watcher has no reason to be muted while it runs.
   void scheduleBodyEnUpdate(db, id, content);
 
   return id;
@@ -143,24 +161,29 @@ export async function updateMemory(
     { bumpUpdatedAt: true }
   );
 
-  // Write back to the existing path directly. We avoid `writeNote`'s
-  // buildNotePath derivation because it would re-derive the YYYY/MM/DD
-  // segment from createdAt via local-timezone Date getters, which can flip
-  // the directory across a DST or timezone change relative to the original
-  // write. Using the stored `path` keeps the file in place by construction.
-  await writeFileAtomic(filePath, serializeFrontmatter(nextFrontmatter, content));
+  markWriteStart(filePath);
+  try {
+    // Write back to the existing path directly. We avoid `writeNote`'s
+    // buildNotePath derivation because it would re-derive the YYYY/MM/DD
+    // segment from createdAt via local-timezone Date getters, which can flip
+    // the directory across a DST or timezone change relative to the original
+    // write. Using the stored `path` keeps the file in place by construction.
+    await writeFileAtomic(filePath, serializeFrontmatter(nextFrontmatter, content));
 
-  // Keep the previous translation synchronously. body_en is stale relative
-  // to the new content until the background task completes, but that's
-  // preferable to either (a) blocking the update on translation latency,
-  // or (b) clearing body_en to "" mid-update and losing cross-language
-  // searchability in the gap. The background task patches body_en once
-  // the new translation lands.
-  const metadata = { ...nextFrontmatter, id };
-  updateNote(db, toNoteRow(metadata, filePath, content, row.body_en));
+    // Keep the previous translation synchronously. body_en is stale relative
+    // to the new content until the background task completes, but that's
+    // preferable to either (a) blocking the update on translation latency,
+    // or (b) clearing body_en to "" mid-update and losing cross-language
+    // searchability in the gap. The background task patches body_en once
+    // the new translation lands.
+    const metadata = { ...nextFrontmatter, id };
+    updateNote(db, toNoteRow(metadata, filePath, content, row.body_en));
 
-  await gitAdd(vaultPath, filePath);
-  await gitCommit(vaultPath, `update ${id}`);
+    await gitAdd(vaultPath, filePath);
+    await gitCommit(vaultPath, `update ${id}`);
+  } finally {
+    markWriteEnd(filePath);
+  }
 
   void scheduleBodyEnUpdate(db, id, content);
 }
@@ -228,13 +251,18 @@ export async function deleteMemory(db: Database, vaultPath: string, id: string):
 
   const { path: filePath } = fromNoteRow(row);
 
-  // `force: true` makes the unlink idempotent: if the backing file was
-  // already removed externally (sync race, manual rm), we still proceed to
-  // stamp `deleted_at` and record the git history. The goal of delete is the
-  // post-condition "file is gone", not the imperative "perform an unlink".
-  fs.rmSync(filePath, { force: true });
-  softDeleteNote(db, id);
+  markWriteStart(filePath);
+  try {
+    // `force: true` makes the unlink idempotent: if the backing file was
+    // already removed externally (sync race, manual rm), we still proceed to
+    // stamp `deleted_at` and record the git history. The goal of delete is the
+    // post-condition "file is gone", not the imperative "perform an unlink".
+    fs.rmSync(filePath, { force: true });
+    softDeleteNote(db, id);
 
-  await gitRemove(vaultPath, filePath);
-  await gitCommit(vaultPath, `delete ${id}`);
+    await gitRemove(vaultPath, filePath);
+    await gitCommit(vaultPath, `delete ${id}`);
+  } finally {
+    markWriteEnd(filePath);
+  }
 }
