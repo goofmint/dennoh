@@ -8,7 +8,14 @@ import type { NoteMetadata } from "@/core/types";
 import { generateId } from "@/core/uuid";
 import { closeDatabase, openDatabase } from "@/db/connection";
 import { fromNoteRow, toNoteRow } from "@/db/mapper";
-import { deleteNote, getAllNotes, getNoteById, insertNote, updateNote } from "@/db/repository";
+import {
+  deleteNote,
+  getAllNotes,
+  getNoteById,
+  insertNote,
+  softDeleteNote,
+  updateNote,
+} from "@/db/repository";
 import { runMigrations } from "@/db/schema";
 import type { NoteRow } from "@/db/types";
 
@@ -173,6 +180,50 @@ describe("db/repository", () => {
       const row = makeRow({ title: undefined });
       const { metadata } = fromNoteRow(row);
       expect(metadata.title).toBeUndefined();
+    });
+  });
+
+  describe("softDeleteNote", () => {
+    it("hides the note from getNoteById and getAllNotes but keeps the row physically", () => {
+      const a = makeRow({ title: "Keep" });
+      const b = makeRow({ title: "ToBeSoftDeleted" });
+      insertNote(db, a);
+      insertNote(db, b);
+
+      softDeleteNote(db, b.id);
+
+      expect(getNoteById(db, b.id)).toBeNull();
+      expect(getAllNotes(db).map((r) => r.id)).toEqual([a.id]);
+
+      // Live row still on disk — count includes the tombstone.
+      const total = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM notes").get();
+      expect(total?.c).toBe(2);
+
+      // deleted_at was stamped with an ISO 8601 timestamp.
+      const stamped = db
+        .query<{ deleted_at: string | null }, [string]>("SELECT deleted_at FROM notes WHERE id = ?")
+        .get(b.id);
+      expect(stamped?.deleted_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it("throws when the target id is missing or already soft-deleted", () => {
+      const row = makeRow();
+      insertNote(db, row);
+      softDeleteNote(db, row.id);
+
+      expect(() => softDeleteNote(db, row.id)).toThrow(/no live row found/);
+      expect(() => softDeleteNote(db, "nonexistent-id")).toThrow(/no live row found/);
+    });
+
+    it("hard deleteNote still removes a soft-deleted row entirely", () => {
+      const row = makeRow();
+      insertNote(db, row);
+      softDeleteNote(db, row.id);
+
+      deleteNote(db, row.id);
+
+      const total = db.query<{ c: number }, []>("SELECT COUNT(*) AS c FROM notes").get();
+      expect(total?.c).toBe(0);
     });
   });
 });

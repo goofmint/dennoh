@@ -10,3 +10,9 @@ export {
 } from "./frontmatter";
 export { type NoteRead, readNote, writeFileAtomic, writeNote } from "./file";
 export * from "./extract";
+export {
+  ContentValidationError,
+  type ContentValidationCode,
+  validateContent,
+} from "./validate";
+export { deleteMemory, getNote, listRecent, saveMemory, updateMemory } from "./memory";

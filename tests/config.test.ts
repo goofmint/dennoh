@@ -42,7 +42,20 @@ describe("config", () => {
   it("round-trips writeConfig → readConfig", () => {
     const cfg: Config = { vaultPath: "/tmp/vault", lang: "en" };
     writeConfig(cfg);
+    // readConfig fills in `maxFileSizeBytes` from the default when the file
+    // omits it (older config files predate the field).
+    expect(readConfig()).toEqual({ ...cfg, maxFileSizeBytes: DEFAULT_CONFIG.maxFileSizeBytes });
+  });
+
+  it("round-trips an explicit maxFileSizeBytes", () => {
+    const cfg: Config = { vaultPath: "/tmp/vault", lang: "ja", maxFileSizeBytes: 1024 };
+    writeConfig(cfg);
     expect(readConfig()).toEqual(cfg);
+  });
+
+  it("throws when maxFileSizeBytes is not a positive integer", () => {
+    writeRawConfig({ vaultPath: "/x", lang: "ja", maxFileSizeBytes: -1 });
+    expect(() => readConfig()).toThrow(/maxFileSizeBytes/);
   });
 
   it("creates the config directory recursively on write", () => {

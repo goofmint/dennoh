@@ -7,11 +7,18 @@ export type Lang = "ja" | "en";
 export interface Config {
   vaultPath: string;
   lang: Lang;
+  // Upper bound for ingest. Files larger than this are skipped by the read
+  // path with a recorded error instead of pulling unbounded bytes into memory.
+  // Optional so config files written by older versions still parse cleanly.
+  maxFileSizeBytes?: number;
 }
+
+const DEFAULT_MAX_FILE_SIZE_BYTES = 104_857_600; // 100 MiB
 
 export const DEFAULT_CONFIG: Config = {
   vaultPath: "",
   lang: "ja",
+  maxFileSizeBytes: DEFAULT_MAX_FILE_SIZE_BYTES,
 };
 
 function getConfigDir(): string {
@@ -42,7 +49,18 @@ export function readConfig(): Config {
   if (!isValidLang(data.lang)) {
     throw new Error(`Invalid config at ${filePath}: lang must be 'ja' or 'en'`);
   }
-  return { vaultPath: data.vaultPath, lang: data.lang };
+  let maxFileSizeBytes: number = DEFAULT_MAX_FILE_SIZE_BYTES;
+  if ("maxFileSizeBytes" in data && data.maxFileSizeBytes !== undefined) {
+    if (
+      typeof data.maxFileSizeBytes !== "number" ||
+      !Number.isInteger(data.maxFileSizeBytes) ||
+      data.maxFileSizeBytes <= 0
+    ) {
+      throw new Error(`Invalid config at ${filePath}: maxFileSizeBytes must be a positive integer`);
+    }
+    maxFileSizeBytes = data.maxFileSizeBytes;
+  }
+  return { vaultPath: data.vaultPath, lang: data.lang, maxFileSizeBytes };
 }
 
 export function writeConfig(config: Config): void {

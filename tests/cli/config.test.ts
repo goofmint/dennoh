@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { type CliIO, configCommand } from "@/cli";
-import { readConfig, writeConfig } from "@/config";
+import { DEFAULT_CONFIG, readConfig, writeConfig } from "@/config";
 
 function makeIO(): { io: CliIO; stdout: () => string; stderr: () => string } {
   const stdoutBuf: string[] = [];
@@ -72,7 +72,11 @@ describe("cli config", () => {
       writeConfig({ vaultPath: "/x", lang: "ja" });
       const { io } = makeIO();
       configCommand(["set", "lang", "en"], io);
-      expect(readConfig()).toEqual({ vaultPath: "/x", lang: "en" });
+      expect(readConfig()).toEqual({
+        vaultPath: "/x",
+        lang: "en",
+        maxFileSizeBytes: DEFAULT_CONFIG.maxFileSizeBytes,
+      });
     });
   });
 

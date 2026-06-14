@@ -19,11 +19,8 @@ export type ReindexResult = {
 // I/O errors for individual directories are caught and recorded in `errors`;
 // walking continues for all other entries so one bad directory does not abort
 // the full reindex.
-async function* walkMdFiles(
-  root: string,
-  errors: ReindexResult["errors"]
-): AsyncIterable<string> {
-  let entries;
+async function* walkMdFiles(root: string, errors: ReindexResult["errors"]): AsyncIterable<string> {
+  let entries: fs.Dirent[];
   try {
     entries = await fs.promises.readdir(root, { withFileTypes: true });
   } catch (e) {

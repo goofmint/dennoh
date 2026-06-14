@@ -53,8 +53,15 @@ const MIGRATIONS: Record<number, Migration> = {
       END;
     `);
   },
+  2: (db) => {
+    // Soft-delete column. Rows are kept after `softDeleteNote` so that history
+    // (git log, mobile clients) can still resolve the id, while read-paths
+    // hide them via `WHERE deleted_at IS NULL`. NULL means "live", an ISO 8601
+    // timestamp means "deleted at that moment". Hard `deleteNote` is retained
+    // for internal use (tests, true purge) and bypasses this column.
+    db.exec("ALTER TABLE notes ADD COLUMN deleted_at TEXT;");
+  },
   // Future migration patterns to follow when extending this map:
-  //   2: (db) => { db.exec("ALTER TABLE notes ADD COLUMN ..."); }     // column add
   //   3: (db) => { db.exec("CREATE INDEX ... ON notes(...)"); }       // index add
   //   4: (db) => { /* data transform: SELECT old, INSERT new, etc. */ } // data transform
   //   5: (db) => {                                                     // FTS rebuild

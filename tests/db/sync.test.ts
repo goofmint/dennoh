@@ -120,7 +120,13 @@ describe("db/sync", () => {
       const invalidId = generateId();
       const date = new Date(2026, 5, 12);
 
-      await writeNote(vaultPath, validId, date, fm({ updatedAt: "2026-06-12T10:00:00+09:00" }), "valid body");
+      await writeNote(
+        vaultPath,
+        validId,
+        date,
+        fm({ updatedAt: "2026-06-12T10:00:00+09:00" }),
+        "valid body"
+      );
       await writeNote(vaultPath, invalidId, date, fm({ updatedAt: "not-a-date" }), "invalid body");
 
       bumpMtime(buildNotePath(vaultPath, validId, date));
