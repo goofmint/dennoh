@@ -45,12 +45,17 @@ async function resolveAuthor(vaultPath: string): Promise<{ name: string; email: 
     git.getConfig({ fs, dir: vaultPath, path: "user.name" }),
     git.getConfig({ fs, dir: vaultPath, path: "user.email" }),
   ]);
-  if (typeof configuredName !== "string" || configuredName.length === 0) {
+  // Whitespace-only values like `"   "` are treated as unset: an identity
+  // composed entirely of whitespace yields an uninformative author entry
+  // and almost always indicates a misconfigured git setup. We check the
+  // trimmed length but pass the original string through unchanged — the
+  // contract is "reject if effectively empty", not "silently normalize".
+  if (typeof configuredName !== "string" || configuredName.trim().length === 0) {
     throw new Error(
       `git user.name is not configured for vault ${JSON.stringify(vaultPath)}; set it before committing (e.g., \`git config user.name <name>\`).`
     );
   }
-  if (typeof configuredEmail !== "string" || configuredEmail.length === 0) {
+  if (typeof configuredEmail !== "string" || configuredEmail.trim().length === 0) {
     throw new Error(
       `git user.email is not configured for vault ${JSON.stringify(vaultPath)}; set it before committing (e.g., \`git config user.email <email>\`).`
     );

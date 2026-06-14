@@ -135,5 +135,25 @@ describe("git/commit", () => {
       // to the order of the two checks.
       await expect(gitCommit(vaultPath, "add neither")).rejects.toThrow(/user\.(name|email)/);
     });
+
+    it("throws when user.name is whitespace-only", async () => {
+      await git.setConfig({ fs, dir: vaultPath, path: "user.name", value: "   " });
+      await git.setConfig({ fs, dir: vaultPath, path: "user.email", value: "ok@example.com" });
+      const filePath = path.join(vaultPath, "wsname.md");
+      fs.writeFileSync(filePath, "x\n");
+      await gitAdd(vaultPath, filePath);
+
+      await expect(gitCommit(vaultPath, "add wsname")).rejects.toThrow(/user\.name/);
+    });
+
+    it("throws when user.email is whitespace-only", async () => {
+      await git.setConfig({ fs, dir: vaultPath, path: "user.name", value: "Real Name" });
+      await git.setConfig({ fs, dir: vaultPath, path: "user.email", value: "\t  \n" });
+      const filePath = path.join(vaultPath, "wsemail.md");
+      fs.writeFileSync(filePath, "x\n");
+      await gitAdd(vaultPath, filePath);
+
+      await expect(gitCommit(vaultPath, "add wsemail")).rejects.toThrow(/user\.email/);
+    });
   });
 });
