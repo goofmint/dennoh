@@ -22,14 +22,21 @@ const UPDATE_SQL = `
 
 const DELETE_SQL = "DELETE FROM notes WHERE id = ?";
 
+const SOFT_DELETE_SQL = "UPDATE notes SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL";
+
+// `deleted_at IS NULL` is the live-row filter that the v2 migration introduced.
+// `getNoteById` / `getAllNotes` hide soft-deleted rows so callers cannot
+// accidentally surface a tombstoned note; for true purge or test cleanup use
+// `deleteNote` directly.
 const SELECT_BY_ID_SQL = `
   SELECT id, path, created_at, updated_at, source, title, projects_json, tags_json
-  FROM notes WHERE id = ?
+  FROM notes WHERE id = ? AND deleted_at IS NULL
 `;
 
 const SELECT_ALL_SQL = `
   SELECT id, path, created_at, updated_at, source, title, projects_json, tags_json
   FROM notes
+  WHERE deleted_at IS NULL
   ORDER BY updated_at DESC
 `;
 
@@ -82,6 +89,21 @@ export function deleteNote(db: Database, id: string): void {
   const stmt = db.query(DELETE_SQL);
   const tx = db.transaction(() => {
     stmt.run(id);
+  });
+  tx();
+}
+
+// Soft delete: keep the row, stamp `deleted_at` so live reads skip it. The
+// timestamp is generated here (not by the caller) because soft-delete time
+// is a DB-bookkeeping concern, distinct from the frontmatter `updated_at`
+// which reflects user-visible edits.
+export function softDeleteNote(db: Database, id: string): void {
+  const stmt = db.query(SOFT_DELETE_SQL);
+  const tx = db.transaction(() => {
+    const result = stmt.run(new Date().toISOString(), id);
+    if (result.changes === 0) {
+      throw new Error(`softDeleteNote: no live row found for id ${JSON.stringify(id)}`);
+    }
   });
   tx();
 }

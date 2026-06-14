@@ -47,10 +47,12 @@ describe("db/reindex", () => {
     it("indexes every .md file in the vault — row count matches file count (T4.5)", async () => {
       // Lay down N files via the production write path so frontmatter is
       // serialized the same way the CLI/MCP layer would write it.
-      const ids = [generateId(), generateId(), generateId()];
-      const dates = [new Date(2026, 5, 12), new Date(2026, 5, 13), new Date(2026, 5, 14)];
-      const pairs = ids.map((id, i) => [id, dates[i]!, i] as const);
-      for (const [idValue, dateValue, i] of pairs) {
+      const pairs = [
+        [generateId(), new Date(2026, 5, 12)],
+        [generateId(), new Date(2026, 5, 13)],
+        [generateId(), new Date(2026, 5, 14)],
+      ] as const;
+      for (const [i, [idValue, dateValue]] of pairs.entries()) {
         await writeNote(vaultPath, idValue, dateValue, fm({ title: `t${i}` }), `body ${i}`);
       }
 
@@ -59,9 +61,9 @@ describe("db/reindex", () => {
 
       const result = await reindexAll(db, vaultPath);
 
-      expect(result.processed).toBe(ids.length);
+      expect(result.processed).toBe(pairs.length);
       expect(result.errors).toEqual([]);
-      expect(notesCount(db)).toBe(ids.length);
+      expect(notesCount(db)).toBe(pairs.length);
     });
 
     it("clears existing rows before rebuilding so stale entries are removed", async () => {

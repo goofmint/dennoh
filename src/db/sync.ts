@@ -24,7 +24,7 @@ async function* walkMdFilesWithStats(
   root: string,
   errors: SyncResult["errors"]
 ): AsyncIterable<{ path: string; mtimeMs: number }> {
-  let entries;
+  let entries: fs.Dirent[];
   try {
     entries = await fs.promises.readdir(root, { withFileTypes: true });
   } catch (e) {
@@ -55,6 +55,7 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
   // Pull the FS view first so we have a stable snapshot before touching the
   // DB; reading both then diffing minimizes the time window where external
   // writes during scan could be missed.
+  const errors: SyncResult["errors"] = [];
   const fsFiles = new Map<string, number>();
   for await (const file of walkMdFilesWithStats(vaultPath, errors)) {
     fsFiles.set(file.path, file.mtimeMs);
@@ -63,7 +64,6 @@ export async function scanAndSync(db: Database, vaultPath: string): Promise<Sync
   const dbRows = getAllNotes(db);
   const dbByPath = new Map(dbRows.map((r) => [r.path, r]));
 
-  const errors: SyncResult["errors"] = [];
   let added = 0;
   let updated = 0;
   let deleted = 0;

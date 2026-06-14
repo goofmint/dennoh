@@ -7,6 +7,6 @@
 export type { IndexStats, NoteRow } from "./types";
 export { closeDatabase, openDatabase } from "./connection";
 export { runMigrations } from "./schema";
-export { deleteNote, getNoteById, insertNote, updateNote } from "./repository";
+export { deleteNote, getNoteById, insertNote, softDeleteNote, updateNote } from "./repository";
 export { type ReindexResult, reindexAll } from "./reindex";
 export { type SyncResult, scanAndSync } from "./sync";

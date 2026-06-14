@@ -43,6 +43,7 @@
     "@biomejs/biome"
   ],
   "dependencies": {
+    "isomorphic-git": "^1.38.4",
     "uuidv7": "^1.2.1",
     "yaml": "^2.9.0"
   }
