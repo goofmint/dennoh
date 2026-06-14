@@ -131,7 +131,17 @@ export async function getNote(
 // and `ORDER BY updated_at DESC`, so this just bounds the result. We return
 // raw NoteRow rather than reading bodies from disk because the recent-list
 // view is metadata-only — callers that need bodies pair this with `getNote`.
+//
+// `limit` is validated here because TypeScript types are compile-time only;
+// `Array.prototype.slice` silently mis-handles negatives (drops trailing
+// rows) and NaN (returns empty), so a bad value would produce a confusing
+// result rather than a clear error. The CLI / MCP boundary normally cleans
+// inputs, but this function is reachable from any future caller and the
+// guard is cheap.
 export function listRecent(db: Database, limit: number = DEFAULT_RECENT_LIMIT): NoteRow[] {
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new Error(`listRecent: limit must be a positive integer (got ${limit})`);
+  }
   return getAllNotes(db).slice(0, limit);
 }
 

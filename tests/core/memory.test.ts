@@ -284,5 +284,12 @@ describe("core/memory", () => {
       const rows = listRecent(db);
       expect(rows.map((r) => r.id)).toEqual([keep]);
     });
+
+    it("throws when limit is not a positive integer", () => {
+      expect(() => listRecent(db, 0)).toThrow(/positive integer/);
+      expect(() => listRecent(db, -1)).toThrow(/positive integer/);
+      expect(() => listRecent(db, 1.5)).toThrow(/positive integer/);
+      expect(() => listRecent(db, Number.NaN)).toThrow(/positive integer/);
+    });
   });
 });

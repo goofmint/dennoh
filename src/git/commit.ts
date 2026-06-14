@@ -3,9 +3,6 @@ import * as path from "node:path";
 
 import git from "isomorphic-git";
 
-const DEFAULT_AUTHOR_NAME = "dennoh";
-const DEFAULT_AUTHOR_EMAIL = "dennoh@localhost";
-
 // isomorphic-git expects `filepath` to be relative to `dir`. Callers in the
 // dennoh codebase pass absolute paths produced by `buildNotePath`, so we
 // normalize here rather than forcing every call site to remember the rule.
@@ -37,19 +34,28 @@ export async function gitRemove(vaultPath: string, filePath: string): Promise<vo
   await git.remove({ fs, dir: vaultPath, filepath: toRelative(vaultPath, filePath) });
 }
 
-// Resolves the author identity from the local git config, falling back to
-// the dennoh-default identity when the user has not configured one. We pull
-// name and email independently because either can be set without the other —
-// isomorphic-git's `commit()` requires both fields to be present.
+// Resolves the author identity from the local git config. Fails loudly when
+// either `user.name` or `user.email` is missing rather than silently
+// substituting a placeholder identity — per project policy "fallback
+// processing is absolutely forbidden". Both fields are read independently
+// because either can be set without the other; isomorphic-git's `commit()`
+// requires both, so a partial config is just as broken as no config.
 async function resolveAuthor(vaultPath: string): Promise<{ name: string; email: string }> {
   const [configuredName, configuredEmail] = await Promise.all([
     git.getConfig({ fs, dir: vaultPath, path: "user.name" }),
     git.getConfig({ fs, dir: vaultPath, path: "user.email" }),
   ]);
-  return {
-    name: configuredName ?? DEFAULT_AUTHOR_NAME,
-    email: configuredEmail ?? DEFAULT_AUTHOR_EMAIL,
-  };
+  if (typeof configuredName !== "string" || configuredName.length === 0) {
+    throw new Error(
+      `git user.name is not configured for vault ${JSON.stringify(vaultPath)}; set it before committing (e.g., \`git config user.name <name>\`).`
+    );
+  }
+  if (typeof configuredEmail !== "string" || configuredEmail.length === 0) {
+    throw new Error(
+      `git user.email is not configured for vault ${JSON.stringify(vaultPath)}; set it before committing (e.g., \`git config user.email <email>\`).`
+    );
+  }
+  return { name: configuredName, email: configuredEmail };
 }
 
 export async function gitCommit(vaultPath: string, message: string): Promise<string> {
