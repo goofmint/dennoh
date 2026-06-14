@@ -108,13 +108,16 @@ describe("core/memory", () => {
 
       await updateMemory(db, vaultPath, id, "v2 body #new @reader");
       const afterRow = getNoteById(db, id);
+      if (afterRow === null) {
+        throw new Error("expected DB row after updateMemory");
+      }
 
-      expect(afterRow?.created_at).toBe(beforeCreatedAt ?? "");
-      expect(afterRow?.updated_at).not.toBe(beforeUpdatedAt);
-      expect(afterRow?.projects_json).toBe(JSON.stringify(["new"]));
-      expect(afterRow?.tags_json).toBe(JSON.stringify(["reader"]));
+      expect(afterRow.created_at).toBe(beforeCreatedAt ?? "");
+      expect(afterRow.updated_at).not.toBe(beforeUpdatedAt);
+      expect(afterRow.projects_json).toBe(JSON.stringify(["new"]));
+      expect(afterRow.tags_json).toBe(JSON.stringify(["reader"]));
 
-      const onDisk = await readNote(afterRow?.path ?? "");
+      const onDisk = await readNote(afterRow.path);
       expect(onDisk.body).toContain("v2 body #new @reader");
 
       const log = await git.log({ fs, dir: vaultPath });
@@ -145,7 +148,10 @@ describe("core/memory", () => {
 
       // File and DB are untouched by the rejected update.
       const row = getNoteById(db, id);
-      const onDisk = await readNote(row?.path ?? "");
+      if (row === null) {
+        throw new Error("expected DB row to survive a rejected updateMemory");
+      }
+      const onDisk = await readNote(row.path);
       expect(onDisk.body).toContain("small");
     });
 
@@ -157,7 +163,10 @@ describe("core/memory", () => {
 
       // Original content survives.
       const row = getNoteById(db, id);
-      const onDisk = await readNote(row?.path ?? "");
+      if (row === null) {
+        throw new Error("expected DB row to survive a rejected updateMemory");
+      }
+      const onDisk = await readNote(row.path);
       expect(onDisk.body).toContain("before");
     });
   });
@@ -166,7 +175,10 @@ describe("core/memory", () => {
     it("removes the file, soft-deletes the row, and commits 'delete <id>'", async () => {
       const id = await saveMemory(db, vaultPath, "alive");
       const row = getNoteById(db, id);
-      const filePath = row?.path ?? "";
+      if (row === null) {
+        throw new Error("expected DB row for newly-saved memory");
+      }
+      const filePath = row.path;
       expect(fs.existsSync(filePath)).toBe(true);
 
       await deleteMemory(db, vaultPath, id);

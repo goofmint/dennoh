@@ -5,7 +5,7 @@ import * as path from "node:path";
 
 import git from "isomorphic-git";
 
-import { gitAdd, gitCommit } from "@/git/commit";
+import { gitAdd, gitCommit, gitRemove } from "@/git/commit";
 
 describe("git/commit", () => {
   let vaultPath: string;
@@ -86,7 +86,7 @@ describe("git/commit", () => {
       await gitCommit(vaultPath, `update ${id}`);
 
       fs.rmSync(filePath);
-      await git.remove({ fs, dir: vaultPath, filepath: `${id}.md` });
+      await gitRemove(vaultPath, filePath);
       await gitCommit(vaultPath, `delete ${id}`);
 
       const log = await git.log({ fs, dir: vaultPath });

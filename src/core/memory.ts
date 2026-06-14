@@ -146,7 +146,11 @@ export async function deleteMemory(db: Database, vaultPath: string, id: string):
 
   const { path: filePath } = fromNoteRow(row);
 
-  fs.rmSync(filePath);
+  // `force: true` makes the unlink idempotent: if the backing file was
+  // already removed externally (sync race, manual rm), we still proceed to
+  // stamp `deleted_at` and record the git history. The goal of delete is the
+  // post-condition "file is gone", not the imperative "perform an unlink".
+  fs.rmSync(filePath, { force: true });
   softDeleteNote(db, id);
 
   await gitRemove(vaultPath, filePath);

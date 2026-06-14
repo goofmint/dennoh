@@ -31,10 +31,9 @@ describe("validateContent", () => {
         throw new Error("validateContent should have thrown");
       } catch (e) {
         expect(e).toBeInstanceOf(ContentValidationError);
-        if (e instanceof ContentValidationError) {
-          expect(e.code).toBe("validate.content.binary");
-          expect(e.message).toMatch(/NULL byte/);
-        }
+        const err = e as ContentValidationError;
+        expect(err.code).toBe("validate.content.binary");
+        expect(err.message).toMatch(/NULL byte/);
       }
     });
 
@@ -59,11 +58,13 @@ describe("validateContent", () => {
         throw new Error("validateContent should have thrown");
       } catch (e) {
         expect(e).toBeInstanceOf(ContentValidationError);
-        if (e instanceof ContentValidationError) {
-          expect(e.code).toBe("validate.content.too_large");
-          expect(e.details.sizeBytes).toBe(100);
-          expect(e.details.maxFileSizeBytes ?? e.details.maxSizeBytes).toBe(50);
-        }
+        const err = e as ContentValidationError;
+        expect(err.code).toBe("validate.content.too_large");
+        expect(err.details.sizeBytes).toBe(100);
+        // Public contract: the upper-bound key is `maxSizeBytes`, matching
+        // the validateContent parameter name. Asserting it directly catches
+        // contract drift; the previous `?? maxFileSizeBytes` fallback hid it.
+        expect(err.details.maxSizeBytes).toBe(50);
       }
     });
 
@@ -90,9 +91,8 @@ describe("validateContent", () => {
         throw new Error("validateContent should have thrown");
       } catch (e) {
         expect(e).toBeInstanceOf(ContentValidationError);
-        if (e instanceof ContentValidationError) {
-          expect(e.code).toBe("validate.content.binary");
-        }
+        const err = e as ContentValidationError;
+        expect(err.code).toBe("validate.content.binary");
       }
     });
   });

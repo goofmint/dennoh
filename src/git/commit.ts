@@ -9,8 +9,20 @@ const DEFAULT_AUTHOR_EMAIL = "dennoh@localhost";
 // isomorphic-git expects `filepath` to be relative to `dir`. Callers in the
 // dennoh codebase pass absolute paths produced by `buildNotePath`, so we
 // normalize here rather than forcing every call site to remember the rule.
+//
+// Defense-in-depth: reject any result that escapes the vault. `assertSafeNoteId`
+// already prevents id-level traversal, but `toRelative` is reachable from any
+// future caller — guarding here closes the gap permanently and makes the
+// invariant local to the function rather than spread across upstream code.
 function toRelative(vaultPath: string, filePath: string): string {
-  return path.isAbsolute(filePath) ? path.relative(vaultPath, filePath) : filePath;
+  const relative = path.isAbsolute(filePath) ? path.relative(vaultPath, filePath) : filePath;
+  const segments = relative.split(/[/\\]/);
+  if (segments.includes("..")) {
+    throw new Error(
+      `git path escapes the vault: ${JSON.stringify(filePath)} (vault=${JSON.stringify(vaultPath)})`
+    );
+  }
+  return relative;
 }
 
 export async function gitAdd(vaultPath: string, filePath: string): Promise<void> {
