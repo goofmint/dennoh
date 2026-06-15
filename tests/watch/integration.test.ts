@@ -18,6 +18,7 @@ import { closeDatabase, openDatabase } from "@/db/connection";
 import type { TranslatorFn } from "@/db/reindex";
 import { getNoteById } from "@/db/repository";
 import { runMigrations } from "@/db/schema";
+import { scanAndSync } from "@/db/sync";
 import { type WatcherHandle, markWriteEnd, markWriteStart, startWatcher } from "@/watch";
 
 // Phase-4 integration tests exercise the watcher end-to-end:
@@ -330,6 +331,41 @@ describe("watch integration", () => {
       } finally {
         memoryDb.close();
       }
+    });
+  });
+
+  describe("conflict-copy exclusion", () => {
+    it("scanAndSync skips cloud-sync conflict copies", async () => {
+      const noTranslate: TranslatorFn = () => Promise.resolve("");
+      // A real note and a conflict copy side by side at the vault root.
+      const normalId = generateId();
+      await writeNoteToVaultRoot(vaultPath, normalId, "normalkeyword body");
+      // Valid frontmatter, but a conflict-tagged filename — it must never be read.
+      await fs.promises.writeFile(
+        path.join(vaultPath, "memo (conflicted copy).md"),
+        serializeFrontmatter(fm(), "conflictkeyword body")
+      );
+
+      const result = await scanAndSync(db, vaultPath, noTranslate);
+
+      // Only the real note is indexed; the conflict copy is invisible to search
+      // and contributes nothing to the scan.
+      expect(getNoteById(db, normalId)?.body).toBe("normalkeyword body");
+      expect(searchMemory(db, "normalkeyword")).toHaveLength(1);
+      expect(searchMemory(db, "conflictkeyword")).toHaveLength(0);
+      expect(result.added).toBe(1);
+    });
+
+    it("the live watcher ignores a conflict copy created at runtime", async () => {
+      handle = await startForTest();
+      // Japanese Dropbox conflict form, created after the watcher is live.
+      await fs.promises.writeFile(
+        path.join(vaultPath, "draft (競合コピー).md"),
+        serializeFrontmatter(fm(), "watchedconflict body")
+      );
+      await waitMs(SCAN_WAIT_MS);
+
+      expect(searchMemory(db, "watchedconflict")).toHaveLength(0);
     });
   });
 });
