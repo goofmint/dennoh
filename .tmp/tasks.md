@@ -130,30 +130,30 @@
 
 ## T7. ファイル監視 / 外部編集反映 (F-3.5, F-4.2)
 
-- [ ] T7.1 ファイル監視機構（Bun の `fs.watch` または chokidar 相当を採用、保存フォルダを再帰監視）
+- [x] T7.1 ファイル監視機構（Bun の `fs.watch` または chokidar 相当を採用、保存フォルダを再帰監視）
   - 検証: 外部からファイル追加→イベント受信
-- [ ] T7.2 自分自身の書き込みを無視するロジック（書き込み直後の通知をスキップ）
+- [x] T7.2 自分自身の書き込みを無視するロジック（書き込み直後の通知をスキップ）
   - 検証: 内部 save 後に二重インデックスが起きないテスト
-- [ ] T7.3 変更検知 → 差分インデックス更新
+- [x] T7.3 変更検知 → 差分インデックス更新
   - 検証: 外部編集後、検索結果に新内容が反映される
-- [ ] T7.4 削除検知 → DB から削除
+- [x] T7.4 削除検知 → DB から削除
   - 検証: 外部から `rm` 後、`searchMemory` でヒットしない
-- [ ] T7.5 隠しファイル除外（`.DS_Store`、`.git`、`.obsidian`、`.dennoh` 等）
+- [x] T7.5 隠しファイル除外（`.DS_Store`、`.git`、`.obsidian`、`.dennoh` 等）
   - 検証: これらのパスがインデックスに入らない
 
 ---
 
 ## T8. Git 自動管理 (F-4.5)
 
-- [ ] T8.1 Git ラッパ（外部 `git` コマンドまたは `isomorphic-git`、Stage 2 で決まらない場合は外部 `git` で実装）
+- [x] T8.1 Git ラッパ（外部 `git` コマンドまたは `isomorphic-git`、Stage 2 で決まらない場合は外部 `git` で実装）
   - 検証: 単体テストで init / add / commit / log の動作確認
-- [ ] T8.2 既存 Git リポジトリ判定（`.git` の有無）と `dennoh init` 内での `git init` 分岐
+- [x] T8.2 既存 Git リポジトリ判定（`.git` の有無）と `dennoh init` 内での `git init` 分岐
   - 検証: 既存リポでは init せず利用、新規ではディレクトリ作成
-- [ ] T8.3 保存ごとの自動 commit（メッセージ: `add <id>` / `update <id>` / `delete <id>`）
+- [x] T8.3 保存ごとの自動 commit（メッセージ: `add <id>` / `update <id>` / `delete <id>`）
   - 検証: 3操作後の git log にそれぞれのコミットが並ぶ
-- [ ] T8.4 `dennoh history <id>` 実装（該当ファイルの git log を整形表示）
+- [x] T8.4 `dennoh history <id>` 実装（該当ファイルの git log を整形表示）
   - 検証: 更新3回後に `history` で3件返る
-- [ ] T8.5 `dennoh restore <id> <commit>` 実装（指定 commit のファイル内容を書き戻し）
+- [x] T8.5 `dennoh restore <id> <commit>` 実装（指定 commit のファイル内容を書き戻し）
   - 検証: 過去 commit に restore 後、現在のファイル内容が一致
 
 ---

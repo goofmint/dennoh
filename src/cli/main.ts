@@ -1,7 +1,14 @@
 #!/usr/bin/env bun
 
 import pkg from "../../package.json" with { type: "json" };
-import { type CliIO, configCommand, defaultPromptVaultPath, initCommand } from "./index";
+import {
+  type CliIO,
+  configCommand,
+  defaultPromptVaultPath,
+  historyCommand,
+  initCommand,
+  restoreCommand,
+} from "./index";
 
 function usage(): string {
   return [
@@ -12,6 +19,8 @@ function usage(): string {
     "  config get <key>            Print a config value to stdout",
     "  config set <key> <value>    Update a config value",
     "  config list                 List all config values",
+    "  history <id>                Print a note's commit history (newest first)",
+    "  restore <id> <commitSha>    Restore a note to an earlier commit",
     "  serve                       Start the stdio MCP server (not implemented)",
     "",
     "Flags:",
@@ -41,6 +50,12 @@ export async function main(argv: string[], io: CliIO): Promise<number> {
   }
   if (cmd === "config") {
     return configCommand(rest, io);
+  }
+  if (cmd === "history") {
+    return await historyCommand(rest, io);
+  }
+  if (cmd === "restore") {
+    return await restoreCommand(rest, io);
   }
   if (cmd === "serve") {
     io.stderr("'dennoh serve' is not implemented yet.\n");
