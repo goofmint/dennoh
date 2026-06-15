@@ -37,3 +37,10 @@ reviews:
   finishing_touches:
     simplify:
       enabled: true
+    custom:
+      - enabled: true
+        name: コメント記述
+        instructions: 後で見返した時に分かるように、適切に英語でコメントを記述する
+      - enabled: true
+        name: Import
+        instructions: TypeScriptのインポート順番を、標準ライブラリ・サードパーティーライブラリ、プロジェクトのライブラリ。さらに英語の昇順に変更する
