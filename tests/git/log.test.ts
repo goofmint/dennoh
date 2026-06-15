@@ -55,11 +55,10 @@ describe("git/log", () => {
     const log = await gitLog(vaultPath, path.join(vaultPath, "note.md"));
 
     const shas = log.map((c) => c.sha);
+    // Exactly two entries with these shas/messages proves the unrelated
+    // "add other" commit is excluded — no separate (and previously vacuous)
+    // not-to-contain check is needed.
     expect(shas).toEqual([sha3, sha1]);
-    expect(shas).not.toContain(
-      // sanity: the "other.md" commit's message is never present
-      log.find((c) => c.message === "add other")?.sha
-    );
     expect(log.map((c) => c.message)).toEqual(["update note", "add note"]);
   });
 
