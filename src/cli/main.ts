@@ -8,6 +8,7 @@ import {
   historyCommand,
   initCommand,
   restoreCommand,
+  serveCommand,
   statusCommand,
 } from "./index";
 
@@ -23,7 +24,7 @@ function usage(): string {
     "  history <id>                Print a note's commit history (newest first)",
     "  restore <id> <commitSha>    Restore a note to an earlier commit",
     "  status                      Report vault health (e.g. cloud-sync conflicts)",
-    "  serve                       Start the stdio MCP server (not implemented)",
+    "  serve                       Start the stdio MCP server",
     "",
     "Flags:",
     "  --help, -h                  Show this help",
@@ -63,8 +64,7 @@ export async function main(argv: string[], io: CliIO): Promise<number> {
     return await statusCommand(rest, io);
   }
   if (cmd === "serve") {
-    io.stderr("'dennoh serve' is not implemented yet.\n");
-    return 1;
+    return await serveCommand(rest, io);
   }
 
   io.stderr(`Unknown command: ${cmd}\n\n`);
