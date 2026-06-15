@@ -152,12 +152,19 @@ export async function startWatcher(
   // A failure here is logged at warn level and does not abort the watcher —
   // translation is a search enhancement; saves and indexing remain functional
   // without it (see translate/index.ts for the empty-string failure policy).
-  void init().catch((err) => {
-    const detail = err instanceof Error ? err.message : String(err);
-    log.warn("watcher: translation model preload failed; continuing without translation", {
-      error: detail,
+  //
+  // Skip the preload entirely when the caller explicitly opted out via
+  // `translate: null`. Downloading / loading a 300MB model that we are never
+  // going to call is pure waste, and the spurious warning logs would mislead
+  // operators investigating why translation appears broken.
+  if (options.translate !== null) {
+    void init().catch((err) => {
+      const detail = err instanceof Error ? err.message : String(err);
+      log.warn("watcher: translation model preload failed; continuing without translation", {
+        error: detail,
+      });
     });
-  });
+  }
 
   // Map key is the absolute path; the watcher fires per-path callbacks, and
   // both isOwnWrite and the Phase 3 reconciliation reason in absolute paths.
