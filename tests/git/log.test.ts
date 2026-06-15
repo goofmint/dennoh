@@ -1,0 +1,96 @@
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import git from "isomorphic-git";
+
+import { gitAdd, gitCommit } from "@/git/commit";
+import { gitLog } from "@/git/log";
+
+describe("git/log", () => {
+  let vaultPath: string;
+
+  beforeEach(async () => {
+    vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), "dennoh-git-"));
+    await git.init({ fs, dir: vaultPath, defaultBranch: "main" });
+    await git.setConfig({ fs, dir: vaultPath, path: "user.name", value: "Test" });
+    await git.setConfig({ fs, dir: vaultPath, path: "user.email", value: "test@example.com" });
+  });
+
+  afterEach(() => {
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
+
+  // Stage + commit a single file in one step so each test reads as a sequence
+  // of revisions rather than add/commit boilerplate.
+  async function commitFile(relPath: string, contents: string, message: string): Promise<string> {
+    const filePath = path.join(vaultPath, relPath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, contents);
+    await gitAdd(vaultPath, filePath);
+    return await gitCommit(vaultPath, message);
+  }
+
+  it("returns history for a file newest-first", async () => {
+    const sha1 = await commitFile("note.md", "v1\n", "add note");
+    const sha2 = await commitFile("note.md", "v2\n", "update note");
+
+    const log = await gitLog(vaultPath, path.join(vaultPath, "note.md"));
+
+    expect(log).toHaveLength(2);
+    expect(log[0]?.sha).toBe(sha2);
+    expect(log[1]?.sha).toBe(sha1);
+    expect(log.map((c) => c.message)).toEqual(["update note", "add note"]);
+    expect(log[0]?.author).toBe("Test");
+    expect(log[0]?.timestamp).toBeInstanceOf(Date);
+  });
+
+  it("excludes commits that did not touch the target file", async () => {
+    const sha1 = await commitFile("note.md", "v1\n", "add note");
+    // A commit to an unrelated file must not appear in note.md's history.
+    await commitFile("other.md", "other\n", "add other");
+    const sha3 = await commitFile("note.md", "v2\n", "update note");
+
+    const log = await gitLog(vaultPath, path.join(vaultPath, "note.md"));
+
+    const shas = log.map((c) => c.sha);
+    // Exactly two entries with these shas/messages proves the unrelated
+    // "add other" commit is excluded — no separate (and previously vacuous)
+    // not-to-contain check is needed.
+    expect(shas).toEqual([sha3, sha1]);
+    expect(log.map((c) => c.message)).toEqual(["update note", "add note"]);
+  });
+
+  it("accepts a path already relative to the vault", async () => {
+    const sha = await commitFile("nested/deep.md", "deep\n", "add deep");
+
+    const log = await gitLog(vaultPath, path.join("nested", "deep.md"));
+
+    expect(log).toHaveLength(1);
+    expect(log[0]?.sha).toBe(sha);
+  });
+
+  describe("error handling", () => {
+    it("rejects in a repository with no commits", async () => {
+      // beforeEach inits the repo but commits nothing, so git.log cannot
+      // resolve HEAD and isomorphic-git throws NotFoundError.
+      await expect(gitLog(vaultPath, path.join(vaultPath, "note.md"))).rejects.toThrow();
+    });
+
+    it("rejects for a file that was never committed", async () => {
+      // The repo has history, but the queried path is absent from every
+      // commit; git.log filtered by filepath throws rather than returning [].
+      await commitFile("exists.md", "x\n", "add exists");
+      await expect(gitLog(vaultPath, path.join(vaultPath, "ghost.md"))).rejects.toThrow();
+    });
+
+    it("rejects a path that escapes the vault", async () => {
+      // toRelative guards against `..` traversal; the rejection is our own
+      // explicit error, surfaced before any git operation runs.
+      await expect(gitLog(vaultPath, path.join(vaultPath, "..", "outside.md"))).rejects.toThrow(
+        /escapes the vault/
+      );
+    });
+  });
+});

@@ -1,5 +1,7 @@
 export type { CliIO } from "./types";
 export { configCommand, configGet, configList, configSet } from "./commands/config";
+export { historyCommand } from "./commands/history";
+export { restoreCommand } from "./commands/restore";
 export {
   type CloudMatch,
   type CloudService,

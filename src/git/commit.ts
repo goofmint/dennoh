@@ -11,7 +11,7 @@ import git from "isomorphic-git";
 // already prevents id-level traversal, but `toRelative` is reachable from any
 // future caller — guarding here closes the gap permanently and makes the
 // invariant local to the function rather than spread across upstream code.
-function toRelative(vaultPath: string, filePath: string): string {
+export function toRelative(vaultPath: string, filePath: string): string {
   const relative = path.isAbsolute(filePath) ? path.relative(vaultPath, filePath) : filePath;
   const segments = relative.split(/[/\\]/);
   if (segments.includes("..")) {
