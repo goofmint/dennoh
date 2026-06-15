@@ -1,13 +1,9 @@
 import type { Database } from "bun:sqlite";
 
-import type { CliIO } from "@/cli/types";
+import { type CliIO, readError } from "@/cli/types";
 import { readConfig } from "@/config";
 import { closeDatabase, getNoteById, openDatabase } from "@/db";
 import { gitLog } from "@/git";
-
-function readError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 // `dennoh history <id>` — print the git commit history of a single note,
 // newest first. The note's on-disk path is resolved through the DB rather

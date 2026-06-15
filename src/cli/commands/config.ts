@@ -1,9 +1,5 @@
-import type { CliIO } from "@/cli/types";
+import { type CliIO, readError } from "@/cli/types";
 import { type Config, readConfig, writeConfig } from "@/config";
-
-function readError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 export function configGet(args: string[], io: CliIO): number {
   const key = args[0];

@@ -3,8 +3,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { readNote } from "@/core/file";
-import { DENNOH_DIR, isNotePath } from "@/core/path";
+import { isNotePath } from "@/core/path";
 import { translateJaToEn } from "@/translate";
+// Import the ignore module directly (not the `@/watch` barrel): the barrel
+// re-exports the watcher, which imports this file — going through it would
+// create a circular import. `@/watch/ignore` only pulls in path + conflict.
+import { shouldIgnorePath } from "@/watch/ignore";
 
 import { toNoteRow } from "./mapper";
 import type { TranslatorFn } from "./reindex";
@@ -27,6 +31,7 @@ export type SyncResult = {
 // `errors`; walking continues for remaining entries so one bad path does not
 // abort the full scan.
 async function* walkMdFilesWithStats(
+  vaultPath: string,
   root: string,
   errors: SyncResult["errors"]
 ): AsyncIterable<{ path: string; mtimeMs: number }> {
@@ -40,11 +45,14 @@ async function* walkMdFilesWithStats(
   }
   for (const entry of entries) {
     const full = path.join(root, entry.name);
+    // Single source of truth for exclusions: `.dennoh`, `.git`, `.obsidian`,
+    // dotfiles, and cloud-sync conflict copies are all filtered here via the
+    // vault-relative path, so the watcher and the startup scan agree.
+    if (shouldIgnorePath(path.relative(vaultPath, full))) {
+      continue;
+    }
     if (entry.isDirectory()) {
-      if (entry.name === DENNOH_DIR) {
-        continue;
-      }
-      yield* walkMdFilesWithStats(full, errors);
+      yield* walkMdFilesWithStats(vaultPath, full, errors);
     } else if (entry.isFile() && isNotePath(full)) {
       try {
         const stats = await fs.promises.stat(full);
@@ -68,7 +76,7 @@ export async function scanAndSync(
   const errors: SyncResult["errors"] = [];
   const translationErrors: SyncResult["translationErrors"] = [];
   const fsFiles = new Map<string, number>();
-  for await (const file of walkMdFilesWithStats(vaultPath, errors)) {
+  for await (const file of walkMdFilesWithStats(vaultPath, vaultPath, errors)) {
     fsFiles.set(file.path, file.mtimeMs);
   }
 

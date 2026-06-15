@@ -66,5 +66,19 @@ describe("watch/ignore", () => {
       expect(shouldIgnorePath("/2026/06/13/foo.md")).toBe(false);
       expect(shouldIgnorePath("/.git/HEAD")).toBe(true);
     });
+
+    it("ignores cloud-sync conflict copies (basename at any depth)", () => {
+      expect(shouldIgnorePath("note.conflict.md")).toBe(true);
+      expect(shouldIgnorePath(path.join("2026", "06", "13", "note (conflicted copy).md"))).toBe(
+        true
+      );
+      expect(shouldIgnorePath(path.join("2026", "メモ (競合コピー).md"))).toBe(true);
+    });
+
+    it("does NOT ignore a normal note that merely sits beside a conflict copy", () => {
+      expect(shouldIgnorePath(path.join("2026", "06", "13", "note.md"))).toBe(false);
+      // Parenthesized but not a conflict tag.
+      expect(shouldIgnorePath(path.join("2026", "note (draft).md"))).toBe(false);
+    });
   });
 });

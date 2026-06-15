@@ -1,5 +1,7 @@
 import { DENNOH_DIR } from "@/core/path";
 
+import { isConflictFile } from "./conflict";
+
 // Names that are always ignored, independent of how deep they sit in the tree.
 // `.git` / `.obsidian` / `.dennoh` are explicitly listed (rather than relying on
 // the dot-prefix rule below) so a future change to that rule cannot accidentally
@@ -33,5 +35,11 @@ export function shouldIgnorePath(relativePath: string): boolean {
       return true;
     }
   }
-  return false;
+  // Cloud-sync conflict copies carry a normal-looking, non-dot name and live
+  // beside the real note, so they pass the segment checks above. Inspect the
+  // last segment (the filename) for a conflict-copy pattern. We use the split
+  // segments rather than `path.basename` so the backslash-separator handling
+  // stays consistent with the loop.
+  const basename = segments.at(-1);
+  return basename !== undefined && isConflictFile(basename);
 }

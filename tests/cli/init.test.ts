@@ -3,15 +3,17 @@
 // time and short-circuit to a no-op when set.
 process.env.DENNOH_TRANSLATE_DISABLE = "1";
 
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import {
   type CliIO,
   detectCloudSync,
   expandTilde,
+  formatCloudWarning,
   initCommand,
   resolveVaultPath,
   updateGitignore,
@@ -216,6 +218,51 @@ describe("cli init", () => {
 
     it("detectCloudSync returns null for unrelated paths", () => {
       expect(detectCloudSync(path.join(tempDir, "plain"))).toBeNull();
+    });
+
+    // Direct unit coverage of the pure detector (the cases above exercise it
+    // via initCommand); homedirSpy points os.homedir() at tempDir.
+    it("detectCloudSync identifies an iCloud Drive Obsidian vault path", () => {
+      const vault = path.join(
+        tempDir,
+        "Library",
+        "Mobile Documents",
+        "iCloud~md~obsidian",
+        "Documents",
+        "MyVault"
+      );
+      const match = detectCloudSync(vault);
+      expect(match?.service).toBe("iCloud Drive");
+      expect(match?.vaultPath).toBe(vault);
+    });
+
+    it("detectCloudSync identifies a ~/Dropbox path", () => {
+      expect(detectCloudSync(path.join(tempDir, "Dropbox", "notes"))?.service).toBe("Dropbox");
+    });
+
+    it("detectCloudSync identifies a ~/OneDrive path", () => {
+      expect(detectCloudSync(path.join(tempDir, "OneDrive", "notes"))?.service).toBe("OneDrive");
+    });
+  });
+
+  describe("formatCloudWarning (.git exclusion guidance)", () => {
+    it("recommends excluding .git and names .nosync for iCloud Drive", () => {
+      const msg = formatCloudWarning({ service: "iCloud Drive", vaultPath: "/x/MyVault" });
+      expect(msg).toContain("iCloud Drive");
+      expect(msg).toContain(".git");
+      expect(msg).toContain(".nosync");
+    });
+
+    it("recommends .dropboxignore for Dropbox", () => {
+      const msg = formatCloudWarning({ service: "Dropbox", vaultPath: "/x/MyVault" });
+      expect(msg).toContain(".git");
+      expect(msg).toContain(".dropboxignore");
+    });
+
+    it("points to the OneDrive client for OneDrive", () => {
+      const msg = formatCloudWarning({ service: "OneDrive", vaultPath: "/x/MyVault" });
+      expect(msg).toContain(".git");
+      expect(msg.toLowerCase()).toContain("onedrive");
     });
   });
 
