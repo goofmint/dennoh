@@ -41,8 +41,5 @@ export function shouldIgnorePath(relativePath: string): boolean {
   // segments rather than `path.basename` so the backslash-separator handling
   // stays consistent with the loop.
   const basename = segments.at(-1);
-  if (basename !== undefined && isConflictFile(basename)) {
-    return true;
-  }
-  return false;
+  return basename !== undefined && isConflictFile(basename);
 }

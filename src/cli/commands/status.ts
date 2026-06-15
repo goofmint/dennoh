@@ -1,10 +1,6 @@
-import type { CliIO } from "@/cli/types";
+import { type CliIO, readError } from "@/cli/types";
 import { type Lang, readConfig, resolveLang } from "@/config";
 import { scanConflictFiles } from "@/watch/conflict";
-
-function readError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 // Bilingual strings for the status report. The project-wide i18n dictionary
 // (T12) is not in place yet, so the few strings this command needs live here

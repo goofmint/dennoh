@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 
-import type { CliIO } from "@/cli/types";
+import { type CliIO, readError } from "@/cli/types";
 import { readConfig } from "@/config";
 import { extractMentions } from "@/core/extract";
 import { writeFileAtomic } from "@/core/file";
@@ -8,10 +8,6 @@ import { parseFrontmatter, serializeFrontmatter, updateFrontmatter } from "@/cor
 import { closeDatabase, getNoteById, openDatabase, updateNote } from "@/db";
 import { toNoteRow } from "@/db/mapper";
 import { gitAdd, gitCommit, gitShow } from "@/git";
-
-function readError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 // `dennoh restore <id> <commitSha>` — overwrite a note with the version of it
 // captured in an earlier commit, then record that restore as a new commit.

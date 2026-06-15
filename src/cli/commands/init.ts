@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as readline from "node:readline/promises";
 
-import type { CliIO } from "@/cli/types";
+import { type CliIO, readError } from "@/cli/types";
 import { writeConfig } from "@/config";
 import { DENNOH_DIR } from "@/core";
 import { initializeTranslationModel } from "@/translate";
@@ -21,10 +21,6 @@ export type CloudMatch = {
   service: CloudService;
   vaultPath: string;
 };
-
-function readError(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 export function expandTilde(input: string): string {
   if (input === "~") return os.homedir();
