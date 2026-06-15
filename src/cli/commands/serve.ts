@@ -1,6 +1,6 @@
 import { type CliIO, readError } from "@/cli/types";
 import { readConfig } from "@/config";
-import { closeDatabase, openDatabase } from "@/db";
+import { closeDatabase, openDatabase, runMigrations } from "@/db";
 import { log } from "@/log";
 import { createMcpServer, startStdioServer } from "@/mcp";
 
@@ -21,10 +21,11 @@ export async function serveCommand(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  // Open the index up front. Tools added in later phases (T10.4+) run against
-  // this handle; for now it is held open for the server's lifetime and closed
-  // when the transport shuts down.
+  // Open the index and ensure its schema exists. runMigrations is idempotent
+  // (it no-ops when the schema is current), so this also covers a brand-new
+  // vault where `serve` is the first command to touch the database.
   const db = openDatabase(vaultPath);
+  runMigrations(db);
   const server = createMcpServer({ db, vaultPath });
   try {
     log.info("mcp: serving over stdio", { vaultPath });
