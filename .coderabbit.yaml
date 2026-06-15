@@ -26,11 +26,14 @@ reviews:
         - 実装に合わせてテストを書かない。テスト要件に基づいてテストを記述しているか確認する。
         - テスト内の `if` 文を禁止する。条件分岐を含むテストを指摘する。
         - テストのスキップ（`.skip` 等）の使用を禁止する。
+  pre_merge_checks:
+    custom_checks:
+      - name: コメント
+        instructions: 後で見返した時に分かるように、適切に英語でコメントが書かれている。
+        mode: warning
+      - name: インポート順
+        instructions: TypeScriptのインポート順番は、標準ライブラリ・サードパーティーライブラリ、プロジェクトのライブラリ。さらに英語の昇順で並んでいること。
+        mode: warning
   finishing_touches:
     simplify:
       enabled: true
-    custom:
-      - name: Comment
-        instructions: 後で見返した時に分かるように、適切に英語でコメントが書かれている。
-      - name: Import
-        instructions: TypeScriptのインポート順番は、標準ライブラリ・サードパーティーライブラリ、プロジェクトのライブラリ。さらに英語の昇順で並んでいること。
