@@ -71,4 +71,27 @@ describe("git/log", () => {
     expect(log).toHaveLength(1);
     expect(log[0]?.sha).toBe(sha);
   });
+
+  describe("error handling", () => {
+    it("rejects in a repository with no commits", async () => {
+      // beforeEach inits the repo but commits nothing, so git.log cannot
+      // resolve HEAD and isomorphic-git throws NotFoundError.
+      await expect(gitLog(vaultPath, path.join(vaultPath, "note.md"))).rejects.toThrow();
+    });
+
+    it("rejects for a file that was never committed", async () => {
+      // The repo has history, but the queried path is absent from every
+      // commit; git.log filtered by filepath throws rather than returning [].
+      await commitFile("exists.md", "x\n", "add exists");
+      await expect(gitLog(vaultPath, path.join(vaultPath, "ghost.md"))).rejects.toThrow();
+    });
+
+    it("rejects a path that escapes the vault", async () => {
+      // toRelative guards against `..` traversal; the rejection is our own
+      // explicit error, surfaced before any git operation runs.
+      await expect(gitLog(vaultPath, path.join(vaultPath, "..", "outside.md"))).rejects.toThrow(
+        /escapes the vault/
+      );
+    });
+  });
 });
