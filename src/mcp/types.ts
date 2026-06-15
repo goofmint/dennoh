@@ -1,9 +1,17 @@
-// Result shape for the future `status` MCP tool (T10.10): index health the
-// client can render. For this foundation it carries the index counters; queue
-// depth and last-error fields are added when those subsystems are wired.
+import type { Database } from "bun:sqlite";
+
+// Shared context every tool handler needs to bridge into the core layer: the
+// open SQLite index and the vault root. Constructed once by `dennoh serve`.
+export type McpContext = {
+  db: Database;
+  vaultPath: string;
+};
+
+// Result shape for the `status` MCP tool (T10.10). `queueDepth` is present only
+// when a watcher is wired into the server (none yet in the serve foundation);
+// `latestError` is null until an error-tracking subsystem feeds it.
 export type StatusResult = {
-  // Number of live (non-deleted) notes in the index.
-  noteCount: number;
-  // ISO 8601 timestamp of the most recently updated note, or null when empty.
-  lastUpdatedAt: string | null;
+  indexedCount: number;
+  queueDepth?: number;
+  latestError: string | null;
 };

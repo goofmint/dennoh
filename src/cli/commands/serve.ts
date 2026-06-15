@@ -25,7 +25,7 @@ export async function serveCommand(args: string[], io: CliIO): Promise<number> {
   // this handle; for now it is held open for the server's lifetime and closed
   // when the transport shuts down.
   const db = openDatabase(vaultPath);
-  const server = createMcpServer();
+  const server = createMcpServer({ db, vaultPath });
   try {
     log.info("mcp: serving over stdio", { vaultPath });
     await startStdioServer(server);

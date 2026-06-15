@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 
 import type { NoteSource } from "@/core/types";
 
-import type { NoteRow, NoteSearchResult, SearchFilters } from "./types";
+import type { IndexStats, NoteRow, NoteSearchResult, SearchFilters } from "./types";
 
 const INSERT_SQL = `
   INSERT INTO notes (
@@ -123,6 +123,23 @@ export function getNoteById(db: Database, id: string): NoteRow | null {
 
 export function getAllNotes(db: Database): NoteRow[] {
   return db.query<NoteRow, []>(SELECT_ALL_SQL).all();
+}
+
+const INDEX_STATS_SQL = `
+  SELECT COUNT(*) AS noteCount, MAX(updated_at) AS lastUpdatedAt
+  FROM notes WHERE deleted_at IS NULL
+`;
+
+// Aggregate counters for the `status` surface: live-row count and the max
+// updated_at (null when the vault is empty). A single aggregate round-trip —
+// no JS-side row scan — so it stays cheap on large vaults.
+export function getIndexStats(db: Database): IndexStats {
+  const row = db
+    .query<{ noteCount: number; lastUpdatedAt: string | null }, []>(INDEX_STATS_SQL)
+    .get();
+  // An aggregate SELECT always returns exactly one row; the null-guard is for
+  // the type system, not a real runtime branch.
+  return { noteCount: row?.noteCount ?? 0, lastUpdatedAt: row?.lastUpdatedAt ?? null };
 }
 
 const DEFAULT_SEARCH_LIMIT = 20;

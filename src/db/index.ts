@@ -9,6 +9,7 @@ export { closeDatabase, openDatabase } from "./connection";
 export { runMigrations } from "./schema";
 export {
   deleteNote,
+  getIndexStats,
   getNoteById,
   insertNote,
   searchNotes,
