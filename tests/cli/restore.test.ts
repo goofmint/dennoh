@@ -95,6 +95,28 @@ describe("cli restore", () => {
     expect(row?.body_en).toBe("");
   });
 
+  it("accepts the 7-char short SHA that `history` prints", async () => {
+    // history outputs abbreviated SHAs; restore must round-trip them. isomorphic-git
+    // does not expand short oids implicitly, so gitShow runs expandOid first —
+    // this guards that integration.
+    const db = openDatabase(vaultPath);
+    const id = await saveMemory(db, vaultPath, "first version\n");
+    const filePath = getNoteById(db, id)?.path;
+    if (filePath === undefined) throw new Error("note path missing after save");
+    await updateMemory(db, vaultPath, id, "second version\n");
+
+    const before = await gitLog(vaultPath, filePath);
+    const addSha = before[before.length - 1]?.sha;
+    if (addSha === undefined) throw new Error("add commit not found");
+    closeDatabase(db);
+
+    const { io, stderr } = makeIO();
+    const code = await restoreCommand([id, addSha.slice(0, 7)], io);
+    expect(code).toBe(0);
+    expect(stderr()).toBe("");
+    expect(parseFrontmatter(fs.readFileSync(filePath, "utf-8")).body).toBe("first version\n");
+  });
+
   it("errors for an unknown id", async () => {
     const { io, stderr } = makeIO();
     const code = await restoreCommand(["018f0c8e-7c4f-7d3a-8b2e-000000000000", "0".repeat(40)], io);

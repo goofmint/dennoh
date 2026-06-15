@@ -1,3 +1,5 @@
+import type { Database } from "bun:sqlite";
+
 import type { CliIO } from "@/cli/types";
 import { readConfig } from "@/config";
 import { extractMentions } from "@/core/extract";
@@ -31,7 +33,17 @@ export async function restoreCommand(args: string[], io: CliIO): Promise<number>
     return 1;
   }
 
-  const db = openDatabase(vaultPath);
+  // openDatabase creates the .dennoh dir and opens SQLite; both can fail
+  // (permissions, disk). Catch here so a failed open exits cleanly via the
+  // same stderr + return-1 contract instead of crashing the CLI uncaught.
+  let db: Database;
+  try {
+    db = openDatabase(vaultPath);
+  } catch (e) {
+    io.stderr(`${readError(e)}\n`);
+    return 1;
+  }
+
   try {
     // getNoteById filters `deleted_at IS NULL`: restoring onto a soft-deleted
     // or unknown note is rejected here. We resolve the path from the DB row so

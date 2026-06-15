@@ -31,9 +31,11 @@ export async function gitLog(vaultPath: string, filePath: string): Promise<Commi
 
   return commits.map((entry) => ({
     sha: entry.oid,
-    // git stores the message with a trailing newline; trim so the value is
-    // directly presentable without leaking commit-object formatting.
-    message: entry.commit.message.trim(),
+    // Keep only the subject line (first line). dennoh's own commits are
+    // single-line, but the vault is a real repo a user may commit to with a
+    // multi-line message; the history view renders one commit per line, so an
+    // internal newline must not leak into the output.
+    message: (entry.commit.message.split("\n")[0] ?? "").trim(),
     author: entry.commit.author.name,
     // isomorphic-git reports the author time in whole seconds; Date expects ms.
     timestamp: new Date(entry.commit.author.timestamp * 1000),
