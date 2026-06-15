@@ -3,10 +3,11 @@
 // time and short-circuit to a no-op when set.
 process.env.DENNOH_TRANSLATE_DISABLE = "1";
 
-import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import {
   type CliIO,
