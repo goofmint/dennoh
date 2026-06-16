@@ -1,7 +1,3 @@
-// Disable JA→EN translation so saveMemory doesn't load model weights;
-// see restore.test.ts for the same guard.
-process.env.DENNOH_TRANSLATE_DISABLE = "1";
-
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -48,8 +44,15 @@ describe("cli add", () => {
   let homeDir: string;
   let vaultPath: string;
   let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">>;
+  // Scope DENNOH_TRANSLATE_DISABLE per-test (disable JA→EN translation so
+  // saveMemory doesn't load model weights) and restore it afterwards so the
+  // env mutation does not leak into other suites in the same process.
+  let prevTranslateDisable: string | undefined;
 
   beforeEach(async () => {
+    prevTranslateDisable = process.env.DENNOH_TRANSLATE_DISABLE;
+    process.env.DENNOH_TRANSLATE_DISABLE = "1";
+
     homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "dennoh-add-home-"));
     homedirSpy = spyOn(os, "homedir").mockReturnValue(homeDir);
 
@@ -65,6 +68,9 @@ describe("cli add", () => {
   afterEach(() => {
     homedirSpy.mockRestore();
     fs.rmSync(homeDir, { recursive: true, force: true });
+    prevTranslateDisable === undefined
+      ? Reflect.deleteProperty(process.env, "DENNOH_TRANSLATE_DISABLE")
+      : Reflect.set(process.env, "DENNOH_TRANSLATE_DISABLE", prevTranslateDisable);
   });
 
   it("saves the argument content and prints the new id", async () => {

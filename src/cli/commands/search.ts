@@ -15,14 +15,19 @@ import { closeDatabase, openDatabase, runMigrations } from "@/db";
 
 const DEFAULT_LIMIT = 20;
 
-const MESSAGES: Record<Lang, { usage: string; badLimit: (got: string) => string }> = {
+const MESSAGES: Record<
+  Lang,
+  { usage: string; badLimit: (got: string) => string; missingValue: (name: string) => string }
+> = {
   ja: {
     usage: '使い方: dennoh search "<検索語>" [--project X] [--tag Y] [--limit N] [--json]\n',
     badLimit: (got) => `--limit は正の整数で指定してください (指定値: ${got})\n`,
+    missingValue: (name) => `${name} には値が必要です\n`,
   },
   en: {
     usage: 'Usage: dennoh search "<query>" [--project X] [--tag Y] [--limit N] [--json]\n',
     badLimit: (got) => `--limit must be a positive integer (got ${got})\n`,
+    missingValue: (name) => `${name} requires a value\n`,
   },
 };
 
@@ -34,9 +39,23 @@ export async function searchCommand(args: string[], io: CliIO): Promise<number> 
   const messages = MESSAGES[resolveLang()];
 
   const { present: json, rest: r1 } = takeBooleanFlag(args, "--json");
-  const { value: project, rest: r2 } = takeOption(r1, "--project");
-  const { value: tag, rest: r3 } = takeOption(r2, "--tag");
-  const { value: limitArg, rest } = takeOption(r3, "--limit");
+  const { value: project, present: projectGiven, rest: r2 } = takeOption(r1, "--project");
+  const { value: tag, present: tagGiven, rest: r3 } = takeOption(r2, "--tag");
+  const { value: limitArg, present: limitGiven, rest } = takeOption(r3, "--limit");
+
+  // A flag that appeared without a value (e.g. `search foo --limit`) is a usage
+  // error, not a silent fall-through to defaults. `present && value undefined`
+  // is exactly that case.
+  for (const [name, given, value] of [
+    ["--project", projectGiven, project],
+    ["--tag", tagGiven, tag],
+    ["--limit", limitGiven, limitArg],
+  ] as const) {
+    if (given && value === undefined) {
+      io.stderr(messages.missingValue(name));
+      return EXIT_USER_ERROR;
+    }
+  }
 
   const query = rest[0];
   if (!query) {

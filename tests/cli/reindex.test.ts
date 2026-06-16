@@ -74,6 +74,7 @@ describe("cli reindex", () => {
     // 再インデックスしました。エラー 0 件、翻訳エラー 0 件"
     expect(stdout()).toContain("1 件のメモを再インデックスしました");
     expect(stdout()).toContain("エラー 0 件");
+    expect(stdout()).toContain("翻訳エラー 0 件");
 
     // The note is back in the index after the rebuild.
     const db2 = openDatabase(vaultPath);

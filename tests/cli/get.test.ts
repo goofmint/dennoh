@@ -116,11 +116,9 @@ describe("cli get", () => {
       expect(code).toBe(1);
       expect(stderr()).toContain("Usage");
     } finally {
-      if (prev === undefined) {
-        Reflect.deleteProperty(process.env, "DENNOH_LANG");
-      } else {
-        process.env.DENNOH_LANG = prev;
-      }
+      prev === undefined
+        ? Reflect.deleteProperty(process.env, "DENNOH_LANG")
+        : Reflect.set(process.env, "DENNOH_LANG", prev);
     }
   });
 });

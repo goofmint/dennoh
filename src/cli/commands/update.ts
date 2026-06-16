@@ -6,6 +6,7 @@ import {
   EXIT_INTERNAL_ERROR,
   EXIT_SUCCESS,
   EXIT_USER_ERROR,
+  isNotFoundError,
   readError,
 } from "@/cli/types";
 import { type Lang, readConfig, resolveLang } from "@/config";
@@ -88,6 +89,14 @@ export async function updateCommand(args: string[], io: CliIO): Promise<number> 
     io.stdout(messages.success(id));
     return EXIT_SUCCESS;
   } catch (e) {
+    // The pre-check above covers the common missing-id case; this guards the
+    // TOCTOU race where the note is deleted between that check and the write.
+    // A not-found here is still a user error, reported with the same localized
+    // message rather than the raw core text.
+    if (isNotFoundError(e)) {
+      io.stderr(messages.notFound(id));
+      return EXIT_USER_ERROR;
+    }
     io.stderr(`${readError(e)}\n`);
     return e instanceof ContentValidationError ? EXIT_USER_ERROR : EXIT_INTERNAL_ERROR;
   } finally {

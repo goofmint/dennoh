@@ -25,16 +25,25 @@ export function takeBooleanFlag(
 }
 
 // Remove a valued option (e.g. `--limit 20` or `--limit=20`) from `args`,
-// returning the last value seen (undefined if absent) and the remaining args.
-// The space-separated form consumes the following token as the value; a
-// trailing `--name` with no value yields undefined and is left for the caller
-// to treat as a usage error if the value was required.
+// returning the last value seen (undefined if absent), whether the option token
+// appeared at all (`present`), and the remaining args.
+//
+// `present` lets callers distinguish "flag absent" from "flag given without a
+// value" so the latter can be reported as a usage error instead of silently
+// falling back to a default.
+//
+// In the space-separated form the next token is taken as the value ONLY when it
+// is not itself a flag (does not start with `-`). A `-`-prefixed next token (or
+// end of args) means the value was omitted: it is left in place so the
+// following option / positional still sees it, and `value` stays undefined. A
+// negative numeric value must therefore use the `--name=-3` form.
 export function takeOption(
   args: string[],
   name: string
-): { value: string | undefined; rest: string[] } {
+): { value: string | undefined; present: boolean; rest: string[] } {
   const rest: string[] = [];
   let value: string | undefined;
+  let present = false;
   const prefix = `${name}=`;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -42,20 +51,21 @@ export function takeOption(
       continue;
     }
     if (arg === name) {
-      // `--name value`: the next token is the value, if there is one.
+      present = true;
       const next = args[i + 1];
-      if (next !== undefined) {
+      if (next !== undefined && !next.startsWith("-")) {
         value = next;
         i++;
       }
       continue;
     }
     if (arg.startsWith(prefix)) {
-      // `--name=value`: the value is the remainder after `=`.
+      // `--name=value`: the value is the remainder after `=` (may be empty).
+      present = true;
       value = arg.slice(prefix.length);
       continue;
     }
     rest.push(arg);
   }
-  return { value, rest };
+  return { value, present, rest };
 }

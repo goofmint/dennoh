@@ -16,15 +16,21 @@ const DEFAULT_LIMIT = 10;
 
 const MESSAGES: Record<
   Lang,
-  { unexpectedArgs: (args: string) => string; badLimit: (got: string) => string }
+  {
+    unexpectedArgs: (args: string) => string;
+    badLimit: (got: string) => string;
+    missingValue: (name: string) => string;
+  }
 > = {
   ja: {
     unexpectedArgs: (a) => `'recent' に予期しない引数があります: ${a}\n`,
     badLimit: (got) => `--limit は正の整数で指定してください (指定値: ${got})\n`,
+    missingValue: (name) => `${name} には値が必要です\n`,
   },
   en: {
     unexpectedArgs: (a) => `Unexpected arguments for 'recent': ${a}\n`,
     badLimit: (got) => `--limit must be a positive integer (got ${got})\n`,
+    missingValue: (name) => `${name} requires a value\n`,
   },
 };
 
@@ -36,7 +42,14 @@ export async function recentCommand(args: string[], io: CliIO): Promise<number> 
   const messages = MESSAGES[resolveLang()];
 
   const { present: json, rest: r1 } = takeBooleanFlag(args, "--json");
-  const { value: limitArg, rest } = takeOption(r1, "--limit");
+  const { value: limitArg, present: limitGiven, rest } = takeOption(r1, "--limit");
+
+  // `--limit` with no value (e.g. `recent --limit`) is a usage error, not a
+  // silent fall-through to the default.
+  if (limitGiven && limitArg === undefined) {
+    io.stderr(messages.missingValue("--limit"));
+    return EXIT_USER_ERROR;
+  }
 
   if (rest.length > 0) {
     io.stderr(messages.unexpectedArgs(rest.join(" ")));

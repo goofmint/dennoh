@@ -95,10 +95,19 @@ describe("cli recent", () => {
   });
 
   it("rejects a non-positive --limit", async () => {
+    // A negative value must use the `--limit=-3` form: in the space-separated
+    // form a `-`-prefixed token is treated as a missing value, not a number.
     const { io, stderr } = makeIO();
-    const code = await recentCommand(["--limit", "-3"], io);
+    const code = await recentCommand(["--limit=-3"], io);
     expect(code).toBe(1);
     expect(stderr()).toContain("正の整数");
+  });
+
+  it("rejects --limit given without a value", async () => {
+    const { io, stderr } = makeIO();
+    const code = await recentCommand(["--limit"], io);
+    expect(code).toBe(1);
+    expect(stderr()).toContain("値が必要");
   });
 
   it("errors on unexpected positional arguments", async () => {

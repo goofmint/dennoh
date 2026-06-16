@@ -5,6 +5,7 @@ import {
   EXIT_INTERNAL_ERROR,
   EXIT_SUCCESS,
   EXIT_USER_ERROR,
+  isNotFoundError,
   readError,
 } from "@/cli/types";
 import { type Lang, readConfig, resolveLang } from "@/config";
@@ -68,6 +69,14 @@ export async function deleteCommand(args: string[], io: CliIO): Promise<number> 
     io.stdout(messages.success(id));
     return EXIT_SUCCESS;
   } catch (e) {
+    // The pre-check covers the common missing-id case; this guards the TOCTOU
+    // race where the note is deleted between that check and deleteMemory. Only
+    // a genuine not-found maps to a user error — a mid-delete failure (e.g. a
+    // git error after the soft delete) does not match and stays internal.
+    if (isNotFoundError(e)) {
+      io.stderr(messages.notFound(id));
+      return EXIT_USER_ERROR;
+    }
     io.stderr(`${readError(e)}\n`);
     return EXIT_INTERNAL_ERROR;
   } finally {

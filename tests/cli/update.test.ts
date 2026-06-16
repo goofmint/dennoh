@@ -1,7 +1,3 @@
-// Disable JA→EN translation so saveMemory / updateMemory don't load model
-// weights; see restore.test.ts for the same guard.
-process.env.DENNOH_TRANSLATE_DISABLE = "1";
-
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -49,8 +45,14 @@ describe("cli update", () => {
   let homeDir: string;
   let vaultPath: string;
   let homedirSpy: ReturnType<typeof spyOn<typeof os, "homedir">>;
+  // Scope DENNOH_TRANSLATE_DISABLE per-test and restore it afterwards so the
+  // env mutation does not leak into other suites in the same process.
+  let prevTranslateDisable: string | undefined;
 
   beforeEach(async () => {
+    prevTranslateDisable = process.env.DENNOH_TRANSLATE_DISABLE;
+    process.env.DENNOH_TRANSLATE_DISABLE = "1";
+
     homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "dennoh-update-home-"));
     homedirSpy = spyOn(os, "homedir").mockReturnValue(homeDir);
 
@@ -70,6 +72,9 @@ describe("cli update", () => {
   afterEach(() => {
     homedirSpy.mockRestore();
     fs.rmSync(homeDir, { recursive: true, force: true });
+    prevTranslateDisable === undefined
+      ? Reflect.deleteProperty(process.env, "DENNOH_TRANSLATE_DISABLE")
+      : Reflect.set(process.env, "DENNOH_TRANSLATE_DISABLE", prevTranslateDisable);
   });
 
   it("replaces the note content from the text argument", async () => {
