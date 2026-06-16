@@ -28,7 +28,7 @@ Claude Desktop.
 
 Claude Desktop reads MCP servers from:
 
-```
+```text
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 

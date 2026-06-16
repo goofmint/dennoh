@@ -1,3 +1,5 @@
+import type { Database } from "bun:sqlite";
+
 import { type CliIO, readError } from "@/cli/types";
 import { readConfig } from "@/config";
 import { closeDatabase, openDatabase, runMigrations } from "@/db";
@@ -21,13 +23,25 @@ export async function serveCommand(args: string[], io: CliIO): Promise<number> {
     return 1;
   }
 
-  // Open the index and ensure its schema exists. runMigrations is idempotent
-  // (it no-ops when the schema is current), so this also covers a brand-new
-  // vault where `serve` is the first command to touch the database.
-  const db = openDatabase(vaultPath);
-  runMigrations(db);
-  const server = createMcpServer({ db, vaultPath });
+  // Open the index first, with its own error handling: openDatabase creates the
+  // .dennoh dir and opens SQLite (and closes itself on internal failure), so a
+  // failure here means there is no handle to clean up. Handling it before the
+  // try/finally below keeps closeDatabase from ever running on an unopened db.
+  let db: Database;
   try {
+    db = openDatabase(vaultPath);
+  } catch (e) {
+    io.stderr(`${readError(e)}\n`);
+    return 1;
+  }
+
+  // From here the handle is open, so runMigrations and the server run under a
+  // try/finally that always closes it — even if migration or startup throws.
+  // runMigrations is idempotent (no-ops when the schema is current), so this
+  // also covers a brand-new vault where `serve` first touches the database.
+  try {
+    runMigrations(db);
+    const server = createMcpServer({ db, vaultPath });
     log.info("mcp: serving over stdio", { vaultPath });
     await startStdioServer(server);
     return 0;

@@ -137,9 +137,14 @@ export function getIndexStats(db: Database): IndexStats {
   const row = db
     .query<{ noteCount: number; lastUpdatedAt: string | null }, []>(INDEX_STATS_SQL)
     .get();
-  // An aggregate SELECT always returns exactly one row; the null-guard is for
-  // the type system, not a real runtime branch.
-  return { noteCount: row?.noteCount ?? 0, lastUpdatedAt: row?.lastUpdatedAt ?? null };
+  // An aggregate SELECT returns exactly one row. A missing row means the query
+  // or database is in an unexpected state (e.g. corruption); fail loudly rather
+  // than fabricate a zero count. `lastUpdatedAt` is legitimately null for an
+  // empty vault, so it passes through untouched.
+  if (row === null) {
+    throw new Error("getIndexStats: aggregate query returned no row");
+  }
+  return { noteCount: row.noteCount, lastUpdatedAt: row.lastUpdatedAt };
 }
 
 const DEFAULT_SEARCH_LIMIT = 20;
