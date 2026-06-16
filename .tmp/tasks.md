@@ -193,45 +193,50 @@
   - 検証: ID 指定でノートが返る
 - [x] T10.10 `status()` ツール登録（インデックス状態・キュー残数・最新エラー）
   - 検証: 戻り値スキーマのテスト
-- [ ] T10.11 Claude Desktop 実機接続テスト（設定例ドキュメント込み）
+- [x] T10.11 Claude Desktop 実機接続テスト（設定例ドキュメント込み）
   - 検証: Claude Desktop の MCP 設定に登録して `save_memory` が呼べる
 
 ---
 
 ## T11. CLI (F-8)
 
-- [ ] T11.1 CLI フレームワーク選定と導入（候補: Citty / Commander / 自前）
-  - 検証: `dennoh --help` が表示される
-- [ ] T11.2 `dennoh init` 統合（T1.4 を CLI から呼ぶ）
-- [ ] T11.3 `dennoh serve` 統合（T10.2）
-- [ ] T11.4 `dennoh add "<text>"` 実装（stdin パイプ対応）
+- [x] T11.1 CLI フレームワーク選定と導入（自前ディスパッチャを `src/cli/main.ts` に実装）
+  - 検証: `dennoh --help` が表示される（バイリンガル対応）
+- [x] T11.2 `dennoh init` 統合（T1.4 を CLI から呼ぶ）
+- [x] T11.3 `dennoh serve` 統合（T10.2）
+- [x] T11.4 `dennoh add "<text>"` 実装（stdin パイプ対応）
   - 検証: `echo hello | dennoh add` でメモが保存される
-- [ ] T11.5 `dennoh update <id> "<text>"` 実装（stdin パイプ対応）
+  - 補足: パイプ判定は `process.stdin.isTTY !== true`（実パイプでは `isTTY` が `undefined` で `=== false` では拾えないため）
+- [x] T11.5 `dennoh update <id> "<text>"` 実装（stdin パイプ対応）
   - 検証: 既存ノートが更新
-- [ ] T11.6 `dennoh delete <id>` 実装
-- [ ] T11.7 `dennoh search "<query>" [--project X] [--tag Y] [--limit N] [--json]`
-  - 検証: 表形式と JSON 両方で結果が出る
-- [ ] T11.8 `dennoh get <id> [--json]`
-- [ ] T11.9 `dennoh recent [--limit N] [--json]`
-- [ ] T11.10 `dennoh status` 実装
-- [ ] T11.11 `dennoh reindex` 実装（T4.5 を CLI から）
-- [ ] T11.12 `dennoh history <id>` / `dennoh restore <id> <commit>` 統合
-- [ ] T11.13 `dennoh config get/set/list` 統合
-- [ ] T11.14 終了コード規約（成功 0、ユーザーエラー 1、内部エラー 2）
-  - 検証: 不正引数で 1、未捕捉例外で 2
-- [ ] T11.15 `--help` / コマンド別ヘルプの i18n 対応
+- [x] T11.6 `dennoh delete <id>` 実装
+- [x] T11.7 `dennoh search "<query>" [--project X] [--tag Y] [--limit N] [--json]`
+  - 検証: 1行1件の一覧表示と JSON 両方で結果が出る
+- [x] T11.8 `dennoh get <id> [--json]`
+- [x] T11.9 `dennoh recent [--limit N] [--json]`
+- [x] T11.10 `dennoh status` 実装
+- [x] T11.11 `dennoh reindex` 実装（T4.5 を CLI から）
+- [x] T11.12 `dennoh history <id>` / `dennoh restore <id> <commit>` 統合
+- [x] T11.13 `dennoh config get/set/list` 統合
+- [x] T11.14 終了コード規約（成功 0、ユーザーエラー 1、内部エラー 2）
+  - 検証: 不正引数・ID不存在・バリデーションで 1、DB接続失敗・予期しない例外で 2（`src/cli/types.ts` に `EXIT_SUCCESS`/`EXIT_USER_ERROR`/`EXIT_INTERNAL_ERROR` を定義し全コマンドに適用）
+- [x] T11.15 `--help` / コマンド別ヘルプの i18n 対応
   - 検証: `DENNOH_LANG=en dennoh --help` で英語表示
 
 ---
 
 ## T12. i18n (4.7)
 
+> **現状メモ**: CLI のメッセージは `status.ts` 由来の「各コマンドファイル内 `MESSAGES: Record<Lang, {...}>`」方式で日英対応済み（add/update/delete/get/search/recent/reindex + main の usage/不明コマンド）。集中辞書（`src/i18n/ja.ts`/`en.ts`）方式は未導入のため T12.1/T12.3 は別途リファクタが必要。history/restore/serve/config は英語のまま（未 localize）。
+
 - [ ] T12.1 メッセージ辞書（`src/i18n/ja.ts`, `src/i18n/en.ts`、フラットキー構造）
   - 検証: ja/en 両方が同じキー集合を持つ単体テスト
-- [ ] T12.2 言語解決ロジック（環境変数 > 設定ファイル > 既定 `ja`）
-  - 検証: 優先度のテスト
+  - 注: 現状は集中辞書ではなくコマンド単位の `MESSAGES` 定数で実装（要件の辞書方式は未着手）
+- [x] T12.2 言語解決ロジック（環境変数 > 設定ファイル > 既定 `ja`）
+  - 検証: 優先度のテスト（`src/config` の `resolveLang()`: `DENNOH_LANG` > config.lang > 既定 `ja`）
 - [ ] T12.3 CLI 全コマンドが辞書経由でメッセージ出力
   - 検証: ハードコード文字列が無いことを grep で検出するテスト
+  - 注: 新規 7 コマンド + main は日英対応済みだが、集中辞書経由ではなく、また history/restore/serve/config は未 localize
 - [ ] T12.4 MCP ツール description が辞書経由
   - 検証: T10.11 と同じ
 
