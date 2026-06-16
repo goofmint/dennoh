@@ -173,29 +173,27 @@
 
 ## T10. MCP サーバー (F-7)
 
-- [ ] T10.1 MCP SDK 採用（`@modelcontextprotocol/sdk`、Bun 互換性確認）
+- [x] T10.1 MCP SDK 採用（`@modelcontextprotocol/sdk`、Bun 互換性確認）
   - 検証: 最小サーバーが立ち上がる
-- [ ] T10.2 stdio トランスポート起動（`dennoh serve`）
+- [x] T10.2 stdio トランスポート起動（`dennoh serve`）
   - 検証: stdin に initialize リクエストを流して initialize レスポンスを得る
-- [ ] T10.3 stdout 汚染防止: ログ・診断は stderr に固定（T0.6 のロガーで保証）
+- [x] T10.3 stdout 汚染防止: ログ・診断は stderr に固定（T0.6 のロガーで保証）
   - 検証: stdout を JSON 行のみに保つテスト
-- [ ] T10.4 `save_memory(content, source?)` ツール登録
+- [x] T10.4 `save_memory(content, source?)` ツール登録
   - 検証: ツール呼び出しでファイルが生成される統合テスト
-- [ ] T10.5 `update_memory(id, content)` ツール登録
+- [x] T10.5 `update_memory(id, content)` ツール登録
   - 検証: 既存ノートが更新される
-- [ ] T10.6 `delete_memory(id)` ツール登録
+- [x] T10.6 `delete_memory(id)` ツール登録
   - 検証: ノートが削除される
-- [ ] T10.7 `search_memory(query, filters?, limit?)` ツール登録
+- [x] T10.7 `search_memory(query, filters?, limit?)` ツール登録
   - 検証: クエリで検索結果が返る
-- [ ] T10.8 `list_recent(limit?)` ツール登録
+- [x] T10.8 `list_recent(limit?)` ツール登録
   - 検証: 最近のノート一覧が返る
-- [ ] T10.9 `get_note(id)` ツール登録
+- [x] T10.9 `get_note(id)` ツール登録
   - 検証: ID 指定でノートが返る
-- [ ] T10.10 `status()` ツール登録（インデックス状態・キュー残数・最新エラー）
+- [x] T10.10 `status()` ツール登録（インデックス状態・キュー残数・最新エラー）
   - 検証: 戻り値スキーマのテスト
-- [ ] T10.11 各ツールの description を i18n 対応
-  - 検証: `lang=ja` で日本語、`lang=en` で英語の description
-- [ ] T10.12 Claude Desktop 実機接続テスト（設定例ドキュメント込み）
+- [ ] T10.11 Claude Desktop 実機接続テスト（設定例ドキュメント込み）
   - 検証: Claude Desktop の MCP 設定に登録して `save_memory` が呼べる
 
 ---
