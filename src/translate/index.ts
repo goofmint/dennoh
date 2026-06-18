@@ -44,9 +44,19 @@ function logProgress(info: unknown): void {
 
 function getTranslator(): Promise<Translator> {
   if (translatorPromise === null) {
-    translatorPromise = pipeline("translation", MODEL_ID, {
-      progress_callback: logProgress,
-    }) as Promise<Translator>;
+    // Reset the singleton on rejection so the next call retries rather than
+    // returning the same cached failure. Without this, a transient network
+    // error during model download would permanently disable translation for
+    // the lifetime of the process.
+    translatorPromise = (
+      pipeline("translation", MODEL_ID, {
+        progress_callback: logProgress,
+      }) as Promise<Translator>
+    ).catch((e: unknown) => {
+      translatorPromise = null;
+      const detail = e instanceof Error ? e.message : String(e);
+      throw new Error(`[dennoh translate] failed to load translation model: ${detail}`);
+    });
   }
   return translatorPromise;
 }
@@ -90,11 +100,13 @@ export async function translateJaToEn(text: string): Promise<string> {
     const out = await translator(text);
     const first = out[0]?.translation_text;
     if (typeof first !== "string") {
-      process.stderr.write("[dennoh translate] pipeline returned unexpected shape\n");
+      process.stderr.write(
+        `[dennoh translate] pipeline returned unexpected shape: ${JSON.stringify(out)}\n`
+      );
       return "";
     }
     return first;
-  } catch (e) {
+
     const detail = e instanceof Error ? e.message : String(e);
     process.stderr.write(`[dennoh translate] translation failed: ${detail}\n`);
     return "";
